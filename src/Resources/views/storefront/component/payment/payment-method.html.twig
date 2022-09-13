@@ -1,0 +1,58 @@
+{% sw_extends '@Storefront/storefront/component/payment/payment-method.html.twig' %}
+
+{% block component_payment_method_description %}
+
+    {% if page.paymentMethods.elements[payment.id].shortName == 'ivy_payment_handler' %}
+
+        <div class="payment-method-description ivy-payment" id="ivy-payment-method"
+            {% if payment.id is same as(selectedPaymentMethodId) %}
+                data-ivy-checkout="true"
+                data-checkout-order-url="{{ path('store-api.checkout.cart.order') }}"
+                data-checkout-pay-url="{{ path('store-api.payment.handle') }}"
+                data-checkout-finish-url="{{ path('frontend.checkout.finish.page', {'orderId':'-orderId-'}) }}"
+                data-checkout-error-url="{{ path('frontend.account.edit-order.page', {'orderId':'-orderId-'}) }}"
+             {% endif %}
+        >
+            {% if payment.id is same as(selectedPaymentMethodId) %}
+                <script src="{{ page.IvyButtonUrl }}" async></script>
+            {% endif %}
+            <span class="ivy-pay-logo">
+                <img src="/bundles/wizmogmbhivypayment/static/img/ivyLogoSmall.png" alt="IVY" title="IVY" class="ivy-s ivy-green"></span>
+
+            {% if payment.translated.description %}
+                {% set paymentDescription = payment.translated.description|raw %}
+                {% set paymentDescriptionTitle = payment.translated.description|striptags|raw %}
+
+                {% if not payment.id is same as(selectedPaymentMethodId) %}
+                    {% set paymentDescription = (paymentDescription|length > 75 ? paymentDescription[:75] ~ ' ...' : paymentDescription) %}
+                {% endif %}
+
+                {% block component_payment_method_description_text %}
+                    {% if page.paymentMethods.elements[payment.id].shortName == 'ivy_payment_handler' %}
+                        <div
+                            class="ivy-banner"
+                            data-variant="payment"
+                            data-value="{{ page.cart.price.netPrice }}"
+                            data-category="{{ page.IvyMcc }}"
+                            data-locale="{{ 'ivypaymentplugin.ivy-modal.ivyLocale'|trans|sw_sanitize }}"
+                            data-project-id="io1"
+                            data-shop-logo="{{ theme_config('sw-logo-desktop') |sw_encode_url }}"
+                        ></div>
+                        <script src="{{ page.IvyBannerUrl }}" async></script>
+
+                    {% else %}
+
+                        {{ parent() }}
+
+                    {% endif %}
+
+                {% endblock %}
+            {% endif %}
+        </div>
+    {% else %}
+
+        {{ parent() }}
+
+    {% endif %}
+
+{% endblock %}

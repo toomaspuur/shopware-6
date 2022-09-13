@@ -1,0 +1,23 @@
+<?xml version="1.0" ?>
+
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <services>
+
+
+        <!--***Components***-->
+        <service id="WizmoGmbh\IvyPayment\Components\Config\ConfigHandler" public="true">
+            <argument id="Shopware\Core\System\SystemConfig\SystemConfigService" type="service"/>
+            <argument id="Doctrine\DBAL\Connection" type="service"/>
+        </service>
+
+        <service id="WizmoGmbh\IvyPayment\Core\IvyPayment\createIvyOrderData" public="true">
+            <argument type="service" id="product_media.repository"/>
+            <argument type="service" id="shipping_method.repository"/>
+            <argument type="service" id="sales_channel.repository"/>
+        </service>
+
+    </services>
+</container>

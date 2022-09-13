@@ -1,0 +1,48 @@
+{% sw_extends '@Storefront/storefront/page/product-detail/buy-widget-form.html.twig' %}
+
+{% block page_product_detail_buy_button %}
+    {{ parent() }}
+
+    {% set ivyPrice = 0 %}
+    {% set taxrate = page.product.tax.taxrate %}
+
+    {% if page.product.calculatedPrices|length > 1 %}
+        {% set lowestPrice = false %}
+        {% set highestPrice = false %}
+        {% for price in page.product.calculatedPrices %}
+            {% if not lowestPrice or price.unitPrice < lowestPrice %}
+                {% set lowestPrice = price.unitPrice %}
+            {% endif %}
+            {% if not highestPrice or price.unitPrice > highestPrice %}
+                {% set highestPrice = price.unitPrice %}
+            {% endif %}
+        {% endfor %}
+
+        {% if  highestPrice > ivyPrice %}
+            {% set ivyPrice = highestPrice %}
+        {% endif %}
+
+    {% else %}
+        {% set ivyPrice = page.product.calculatedPrice.UnitPrice  %}
+
+    {% endif %}
+
+    {% if  taxrate > 0 %}
+        {% set ivyPrice = ivyPrice / (100+taxrate) *100  %}
+    {% endif %}
+
+        <div class="ivy--express-checkout-btn"
+                data-action="{{ path('frontend.ivyexpress.start') }}"
+                data-add-to-ivycart="true">
+            <div
+                class="ivy-checkout-button"
+                style="visibility: hidden"
+                data-cart-value="{{ ivyPrice }}"
+                data-shop-category="{{ page.IvyMcc}}"
+                data-locale="{{ 'ivypaymentplugin.ivy-modal.ivyLocale'|trans|sw_sanitize }}"
+                data-currency-code="{{ context.currency.isoCode }}"
+            ></div>
+            <script src="{{ page.IvyButtonUrl }}"></script>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,60 @@
+{
+    "name": "wizmogmbh/ivy-payment",
+    "description": "Ivy - Climate Neutral Shopping",
+    "version": "1.1.6",
+    "type": "shopware-platform-plugin",
+    "license": "proprietary",
+    "authors": [
+        {
+            "name": "Ivy GmbH",
+            "email": "info@ivyapp.de",
+            "homepage": "https://www.getivy.de/",
+            "role": "Provider"
+        },
+        {
+            "name": "Wizmo GmbH",
+            "email": "service@shopentwickler.berlin",
+            "homepage": "https://www.shopentwickler.berlin/",
+            "role": "Developer"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "WizmoGmbh\\IvyPayment\\": "src/"
+        }
+    },
+    "extra": {
+        "shopware-plugin-class": "WizmoGmbh\\IvyPayment\\WizmoGmbhIvyPayment",
+        "plugin-icon": "src/Resources/config/plugin.png",
+        "copyright": "(c) by Wizmo GmbH",
+        "label": {
+            "de-DE": "Ivy - Klimaneutral Einkaufen",
+            "en-GB": "Ivy - Climate Neutral Shopping"
+        },
+        "description": {
+            "de-DE": "Ivy ist der einfachste Weg, nachhaltig online einzukaufen. Wir schalten Karten aus und bringen den Planeten wieder ins Spiel. Bei jeder Bezahlung über Ivy, berechnen wir den CO2-Fußabdruck jedes Produkts im Warenkorb (einschließlich Produktion, Versand und Verpackung) und kompensieren ihn zu 100 % ohne zusätzliche Kosten für dich.",
+            "en-GB": "Ivy is the easiest way to shop online sustainably. We ditch cards and put the planet back into the equation. When paying with Ivy, we calculate the carbon footprint of every product in your basket (including production, shipping and packaging) and compensate it 100% at no extra cost to you."
+        },
+        "manufacturerLink": {
+            "de-DE": "https://www.shopentwickler.berlin/",
+            "en-GB": "https://www.shopentwickler.berlin/"
+        },
+        "supportLink": {
+            "de-DE": "https://www.getivy.de/",
+            "en-GB": "https://www.getivy.de/"
+        },
+        "pluginSupport": {
+            "de-DE": "plugins@shopentwickler.berlin",
+            "en-GB": "plugins@shopentwickler.berlin"
+        }
+    },
+    "require": {
+        "php": "^7.4 || ^8.0",
+        "shopware/core": ">=6.4.0",
+        "guzzlehttp/guzzle": ">=7.3",
+        "symfony/serializer": ">=5.0"
+    },
+    "conflict": {
+        "ivy/shopware-payment-plugin": "*"
+    }
+}

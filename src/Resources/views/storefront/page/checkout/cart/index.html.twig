@@ -1,0 +1,20 @@
+{% sw_extends '@Storefront/storefront/page/checkout/cart/index.html.twig' %}
+
+{% block page_checkout_cart_add_product_and_shipping %}
+    {{ parent() }}
+{% endblock %}
+
+{% block page_checkout_cart_action_proceed %}
+    {{ parent() }}
+        <div class="ivy--express-checkout-btn" data-action="{{ path('frontend.ivyexpress.start') }}">
+            <button
+                class="ivy-checkout-button"
+                style="visibility: hidden"
+                data-cart-value="{{ page.cart.price.netPrice }}"
+                data-shop-category="{{ page.IvyMcc}}"
+                data-locale="{{ 'ivypaymentplugin.ivy-modal.ivyLocale'|trans|sw_sanitize }}"
+                data-currency-code="{{ context.currency.isoCode }}"
+            ></button>
+            <script src="{{ page.IvyButtonUrl }}" async></script>
+        </div>
+{% endblock %}

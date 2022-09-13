@@ -1,0 +1,35 @@
+{
+    "express": true,
+    "referenceId": "ca67eee0ce6844e8b85fbda8209dfd36",
+    "category": "5712",
+    "price": {
+        "totalNet": 415.8200000000000500222085975110530853271484375,
+        "vat": 80.1299999999999954525264911353588104248046875,
+        "shipping": 5.9000000000000003552713678800500929355621337890625,
+        "total": 501.8500000000000227373675443232059478759765625,
+        "currency": "EUR"
+    },
+    "lineItems": [
+        {
+            "name": "Hauptartikel",
+            "referenceId": "2a88d9b59d474c7e869d8071649be43c",
+            "singleNet": 416.759999999999990905052982270717620849609375,
+            "singleVat": 79.18999999999999772626324556767940521240234375,
+            "amount": 495.94999999999998863131622783839702606201171875,
+            "quantity": 1
+        }
+    ],
+    "shippingMethods": [
+        {
+            "price": 5.9000000000000003552713678800500929355621337890625,
+            "name": "Standard",
+            "countries": [
+                "DE"
+            ]
+        }
+    ],
+    "verificationToken": "Bcwoih7VET8k77KUwQgH6HPw6QpgL9bk",
+    "metadata": {
+        "sw-context-token": "Bcwoih7VET8k77KUwQgH6HPw6QpgL9bk"
+    }
+}

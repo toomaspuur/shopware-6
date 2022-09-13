@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/shopware/platform/master/src/Core/System/SystemConfig/Schema/config.xsd">
+    <card>
+        <title>Ivy Payment Basic Configuration</title>
+        <title lang="de-DE">Ivy Payment Grundeinstellungen</title>
+
+        <input-field type="bool">
+            <name>isSandboxActive</name>
+            <label>Activate Sandbox mode</label>
+            <label lang="de-DE">Sandbox-Modus aktivieren</label>
+            <helpText>
+                In Sandbox mode, the payment implementation can be tested and will not generate real payments.
+            </helpText>
+            <helpText lang="de-DE">
+                Im Sandbox-Modus kann die Implementierung der Zahlart getestet werden - es werden keine echten Zahlungen generiert.
+            </helpText>
+            <defaultValue>true</defaultValue>
+        </input-field>
+
+        <input-field type="single-select">
+            <name>logLevel</name>
+            <label>Log Level</label>
+            <options>
+                <option>
+                    <id>100</id>
+                    <name>DEBUG</name>
+                </option>
+                <option>
+                    <id>200</id>
+                    <name>INFO</name>
+                </option>
+                <option>
+                    <id>300</id>
+                    <name>WARNING</name>
+                </option>
+                <option>
+                    <id>400</id>
+                    <name>ERROR</name>
+                </option>
+            </options>
+            <defaultValue>200</defaultValue>
+        </input-field>
+
+    </card>
+
+    <!--<card>
+        <title>Ivy Express-Checkout Configuration</title>
+        <title lang="de-DE">Ivy Express-Checkout Einstellungen</title>
+
+        <input-field type="bool">
+            <name>isExpressActive</name>
+            <label>Activate Express-Checkout</label>
+            <label lang="de-DE">Express-Checkout aktivieren</label>
+            <defaultValue>false</defaultValue>
+        </input-field>
+
+    </card>-->
+
+    <card>
+        <title>API Access Production mode</title>
+        <title lang="de-DE">API-Zugang Produktivmodus</title>
+
+        <input-field>
+            <name>ProductionIvyApiKey</name>
+            <label>Ivy API Key</label>
+            <label lang="de-DE">Ivy API Key</label>
+            <required>1</required>
+        </input-field>
+
+        <input-field type="password">
+            <name>ProductionIvyWebhookSecret</name>
+            <label>Webhook signing secret</label>
+            <label lang="de-DE">Webhook signing secret</label>
+            <required>1</required>
+        </input-field>
+
+        <component name="ivy-api-production-test-button">
+            <name>apiTest</name>
+        </component>
+
+    </card>
+
+    <card>
+        <title>API Access Sandbox mode</title>
+        <title lang="de-DE">API-Zugang Sandbox-Modus</title>
+
+        <input-field type="text">
+            <name>SandboxIvyApiKey</name>
+            <label>Sandbox Ivy API Key</label>
+            <label lang="de-DE">Sandbox-Modus Ivy API Key</label>
+            <required>1</required>
+        </input-field>
+
+        <input-field type="password">
+            <name>SandboxIvyWebhookSecret</name>
+            <label>Sandbox webhook signing secret</label>
+            <label lang="de-DE">Sandbox webhook signing secret</label>
+            <required>1</required>
+        </input-field>
+
+        <component name="ivy-api-sandbox-test-button">
+            <name>apiTest</name>
+        </component>
+    </card>
+
+</config>
+

@@ -1,0 +1,20 @@
+{
+    "ivypaymentplugin": {
+        "ivy-modal": {
+            "ivyLocale": "de"
+        },
+        "checkout": {
+            "title": "Bezahle mit deiner Bank"
+        },
+        "express": {
+            "session": {
+                "error": "Ivy Session kann nicht erstellt werden"
+            },
+            "checkout": {
+                "error": "Die Zahlung ist fehlgeschlagen"
+            }
+        }
+    }
+}
+
+

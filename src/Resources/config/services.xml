@@ -1,0 +1,58 @@
+<?xml version="1.0" ?>
+
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <imports>
+        <import resource="controllers.xml"/>
+        <import resource="subscribers.xml"/>
+        <import resource="components.xml"/>
+        <import resource="loggers.xml"/>
+    </imports>
+
+    <services>
+
+        <!--***Core Entity Definitions***-->
+        <service id="WizmoGmbh\IvyPayment\Core\Checkout\Order\IvyPaymentSessionDefinition">
+            <tag name="shopware.entity.definition" entity="wizmogmbh_ivypayment"/>
+        </service>
+
+        <service id="WizmoGmbh\IvyPayment\Services\IvyPaymentService">
+            <argument type="service" id="Shopware\Core\Checkout\Payment\Cart\PaymentTransactionChainProcessor"/>
+            <argument type="service" id="Shopware\Core\Checkout\Payment\Cart\Token\JWTFactoryV2"/>
+            <argument type="service" id="payment_method.repository"/>
+            <argument type="service" id="Shopware\Core\Checkout\Payment\Cart\PaymentHandler\PaymentHandlerRegistry"/>
+            <argument type="service" id="order_transaction.repository"/>
+            <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
+            <argument type="service" id="logger"/>
+            <argument type="service" id="order.repository"/>
+            <argument type="service" id="Shopware\Core\System\SalesChannel\Context\SalesChannelContextService"/>
+        </service>
+
+        <service class="WizmoGmbh\IvyPayment\Express\Service\ExpressService" id="wizmo_gmbh.ivy_payment.express.service.express_service">
+            <argument type="service" id="sales_channel.repository"/>
+            <argument type="service" id="payment_method.repository"/>
+            <argument type="service" id="order.repository"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\SalesChannel\CartService"/>
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+            <argument type="service" id="WizmoGmbh\IvyPayment\Components\Config\ConfigHandler"/>
+            <argument type="service" id="router"/>
+            <argument type="service" id="WizmoGmbh\IvyPayment\Core\IvyPayment\createIvyOrderData"/>
+            <argument type="service" id="wizmogmbh_ivypayment.repository"/>
+            <argument type="service" id="sales_channel.country.repository"/>
+            <argument type="service" id="wizmo_gmbh.ivy_payment.ivy_api.api_client"/>
+            <argument type="service" id="Shopware\Core\System\SalesChannel\SalesChannel\SalesChannelContextSwitcher"/>
+            <argument type="service" id="Shopware\Core\System\SalesChannel\Context\SalesChannelContextService"/>
+            <argument type="service" id="Shopware\Core\Checkout\Promotion\Cart\PromotionItemBuilder"/>
+            <argument type="service" id="Shopware\Core\Checkout\Shipping\SalesChannel\ShippingMethodRoute"/>
+            <argument type="service" id="Shopware\Core\Framework\Api\Controller\SalesChannelProxyController"/>
+            <argument type="service" id="hcou.ivypayment.logger.express_logger"/>
+        </service>
+
+        <service class="WizmoGmbh\IvyPayment\IvyApi\ApiClient" id="wizmo_gmbh.ivy_payment.ivy_api.api_client">
+            <argument id="hcou.ivypayment.logger.api_logger" type="service"/>
+        </service>
+
+    </services>
+</container>

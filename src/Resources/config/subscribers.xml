@@ -1,0 +1,43 @@
+<?xml version="1.0" ?>
+
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <services>
+
+        <!--***Subscriber***-->
+        <service id="WizmoGmbh\IvyPayment\Subscriber\ButtonSubscriber" public="true">
+            <argument type="service" id="WizmoGmbh\IvyPayment\Components\Config\ConfigHandler"/>
+            <argument type="service" id="sales_channel.repository"/>
+            <tag name="kernel.event_subscriber"/>
+        </service>
+
+        <service id="WizmoGmbh\IvyPayment\PaymentHandler\IvyPaymentHandler">
+            <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
+            <argument type="service" id="order.repository"/>
+            <argument type="service" id="WizmoGmbh\IvyPayment\Core\IvyPayment\createIvyOrderData"/>
+            <argument type="service" id="wizmogmbh_ivypayment.repository"/>
+            <argument type="service" id="WizmoGmbh\IvyPayment\Components\Config\ConfigHandler"/>
+            <argument type="service" id="wizmo_gmbh.ivy_payment.ivy_api.api_client"/>
+            <argument type="service" id="hcou.ivypayment.logger.payment_logger"/>
+            <tag name="shopware.payment.method.async" />
+        </service>
+
+        <service id="WizmoGmbh\IvyPayment\Express\Subscriber\KernelSubscriber" public="true">
+            <argument type="service" id="wizmo_gmbh.ivy_payment.express.service.express_service"/>
+            <tag name="kernel.event_subscriber"/>
+        </service>
+
+        <service id="WizmoGmbh\IvyPayment\Subscriber\ConfigSubscriber" public="true">
+            <argument type="service" id="WizmoGmbh\IvyPayment\Components\Config\ConfigHandler"/>
+            <argument type="service" id="router"/>
+            <argument type="service" id="wizmo_gmbh.ivy_payment.ivy_api.api_client"/>
+            <argument type="service" id="Shopware\Storefront\Framework\Twig\TemplateConfigAccessor"/>
+            <argument type="service" id="Shopware\Core\System\SalesChannel\Context\CachedSalesChannelContextFactory"/>
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <tag name="kernel.event_subscriber"/>
+        </service>
+
+    </services>
+</container>

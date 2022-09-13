@@ -1,0 +1,31 @@
+{% sw_extends '@Storefront/storefront/component/checkout/offcanvas-cart.html.twig' %}
+
+{% block component_offcanvas_cart_actions_checkout %}
+    {{ parent() }}
+    {% if isCartNotEmpty %}
+        <div class="ivy--express-checkout-btn" data-action="{{ path('frontend.ivyexpress.start') }}">
+            <button
+                class="ivy-checkout-button"
+                style="visibility: hidden"
+                data-cart-value="{{ page.cart.price.netPrice }}"
+                data-shop-category="{{ page.IvyMcc}}"
+                data-locale="{{ 'ivypaymentplugin.ivy-modal.ivyLocale'|trans|sw_sanitize }}"
+                data-currency-code="{{ context.currency.isoCode }}"
+            ></button>
+            <script src="{{ page.IvyButtonUrl }}" async></script>
+        </div>
+    {% else %}
+        <div id="IvyOffcanvasCart">
+            <div
+                class="ivy-banner"
+                data-variant="cart"
+                data-value="{{ page.cart.price.netPrice }}"
+                data-currency="{{ context.currency.isoCode }}"
+                data-category="{{ page.IvyMcc}}"
+                data-locale="{{ 'ivypaymentplugin.ivy-modal.ivyLocale'|trans|sw_sanitize }}"
+                data-shop-logo="{{ theme_config('sw-logo-desktop') |sw_encode_url }}"
+            ></div>
+            <script src="{{ page.IvyBannerUrl}}" async></script>
+        </div>
+    {% endif %}
+{% endblock %}

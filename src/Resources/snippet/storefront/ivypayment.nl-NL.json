@@ -1,0 +1,20 @@
+{
+    "ivypaymentplugin": {
+        "ivy-modal": {
+            "ivyLocale": "nl"
+        },
+        "checkout": {
+            "title": "Betaal veilig met uw bank"
+        },
+        "express": {
+            "session": {
+                "error": "Ivy-sessie kan niet worden gemaakt"
+            },
+            "checkout": {
+                "error": "Betaling mislukt"
+            }
+        }
+    }
+}
+
+

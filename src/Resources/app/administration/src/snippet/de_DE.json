@@ -1,0 +1,9 @@
+{
+    "ivy-api-test-button": {
+        "title": "Ivy API Test",
+        "success": "Verbindung wurde erfolgreich getestet",
+        "error": "Verbindung konnte nicht hergestellt werden. Bitte prüfe den API Key.",
+        "errorMissingFields": "In deinem Ivy Merchant Account müssen folgende Felder noch ausgefüllt werden:  ",
+        "button": "Zugangsdaten testen"
+    }
+}

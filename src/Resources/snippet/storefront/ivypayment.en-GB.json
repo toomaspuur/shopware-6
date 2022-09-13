@@ -1,0 +1,10 @@
+{
+    "ivypaymentplugin": {
+        "ivy-modal": {
+            "ivyLocale": "en"
+        },
+        "checkout": {
+            "title": "Pay by bank"
+        }
+    }
+}

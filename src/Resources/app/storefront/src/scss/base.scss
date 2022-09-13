@@ -1,0 +1,27 @@
+#IvyOffcanvasCart {
+    margin-top: 15px;
+}
+
+.ivy--express-checkout-btn {
+    margin-top: 0;
+    #ivy-checkout-button,.ivy-checkout-button {
+        max-width: 100%;
+        width: 100%;
+        outline: none;
+    }
+    outline: none;
+}
+.ivy-green {
+    height: 1rem;
+}
+
+.ivy--express-checkout-register {
+    margin-bottom: 15px;
+    padding: 0;
+}
+
+.buy-widget-container {
+    .custom-select {
+        height: unset;
+    }
+}
