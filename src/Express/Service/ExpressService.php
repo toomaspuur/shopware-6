@@ -275,13 +275,13 @@ class ExpressService
         // remove preselected shipping
         $ivyExpressSessionData->getPrice()->setShipping(0);
         $referenceId = Uuid::randomHex();
-        $ivyExpressSessionData->setReferenceId($referenceId);        
+        $ivyExpressSessionData->setReferenceId($referenceId);
         $contextToken = $request->getSession()->get(PlatformRequest::HEADER_CONTEXT_TOKEN);
         $ivyExpressSessionData->setMetadata([
             PlatformRequest::HEADER_CONTEXT_TOKEN => $contextToken
         ]);
         // add plugin version as string to know whether or not to redirect to confirmation page after ivy checkout
-        $ivyExpressSessionData->setPlugin('sw6-1.1.6');        
+        $ivyExpressSessionData->setPlugin('sw6-1.1.7');
 
         $jsonContent = $this->serializer->serialize($ivyExpressSessionData, 'json');
         $response = $this->ivyApiClient->sendApiRequest('checkout/session/create', $config, $jsonContent);
@@ -303,7 +303,7 @@ class ExpressService
                 'status'          => 'initExpress',
                 'swOrderId'       => null,
                 'ivySessionId'    => $response['id'],
-                'ivyCo2Grams'     => (string)$response['co2Grams'],
+                'ivyCo2Grams'     => (string)($response['co2Grams'] ?? ''),
                 'expressTempData' => $tempData
             ],
         ], $salesChannelContext->getContext());
@@ -440,6 +440,7 @@ class ExpressService
                     'street' => $billingAddress['line1'] ?? '',
                     'additionalAddressLine1' => $billingAddress['line2'] ?? '',
                     'countryId' => $countryId,
+                    'phoneNumber' => $data['shopperPhone'] ?? '',
                 ],
                 'shippingAddress' => [
                     'salutationId' => $salutationId,
@@ -450,6 +451,7 @@ class ExpressService
                     'street' => $shippingAddress['line1'] ?? '',
                     'additionalAddressLine1' => $shippingAddress['line2'] ?? '',
                     'countryId' => $shippingCountryId,
+                    'phoneNumber' => $data['shopperPhone'] ?? '',
                 ],
                 'acceptedDataProtection' => true,
             ];
