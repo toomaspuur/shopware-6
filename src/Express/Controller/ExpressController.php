@@ -227,7 +227,7 @@ class ExpressController extends StorefrontController
                     $salesChannelContext
                 );
                 $customerData = \json_decode((string)$storeApiResponse->getContent(), true);
-                if ((string)$customerData['email'] === '') {
+                if ((string)($customerData['email'] ?? '') === '') {
                     $message = 'cann not create customer. Status code: ' . $storeApiResponse->getStatusCode() . ' body: ' . $storeApiResponse->getContent();
                     throw new IvyException($message);
                 }

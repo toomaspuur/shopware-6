@@ -303,7 +303,7 @@ class ExpressService
                 'status'          => 'initExpress',
                 'swOrderId'       => null,
                 'ivySessionId'    => $response['id'],
-                'ivyCo2Grams'     => (string)$response['co2Grams'],
+                'ivyCo2Grams'     => (string)($response['co2Grams'] ?? ''),
                 'expressTempData' => $tempData
             ],
         ], $salesChannelContext->getContext());
@@ -451,6 +451,7 @@ class ExpressService
                     'street' => $shippingAddress['line1'] ?? '',
                     'additionalAddressLine1' => $shippingAddress['line2'] ?? '',
                     'countryId' => $shippingCountryId,
+                    'phoneNumber' => $data['shopperPhone'] ?? '',
                 ],
                 'acceptedDataProtection' => true,
             ];
