@@ -1,3 +1,5 @@
+# 1.1.7
+- Telefonnummer ist Pflichtfeld
 # 1.1.6
 - checkout in popup
 # 1.1.4
