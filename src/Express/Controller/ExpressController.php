@@ -12,12 +12,12 @@ use Shopware\Storefront\Controller\StorefrontController;
 use Shopware\Storefront\Page\Checkout\Finish\CheckoutFinishPage;
 use Shopware\Storefront\Page\Checkout\Finish\CheckoutFinishPageLoadedHook;
 use Shopware\Storefront\Page\GenericPageLoaderInterface;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Validator\ConstraintViolationInterface;
 use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
+use WizmoGmbh\IvyPayment\Components\IvyJsonResponse;
 use WizmoGmbh\IvyPayment\Exception\IvyException;
 use WizmoGmbh\IvyPayment\Express\Service\ExpressService;
 use WizmoGmbh\IvyPayment\Logger\IvyLogger;
@@ -79,7 +79,7 @@ class ExpressController extends StorefrontController
             $data['error'] = $message;
         }
         \ini_set('serialize_precision', '3');
-        return new JsonResponse($data);
+        return new IvyJsonResponse($data);
     }
 
     /**
@@ -155,7 +155,7 @@ class ExpressController extends StorefrontController
         }
 
         \ini_set('serialize_precision', '3');
-        $response = new JsonResponse($outputData);
+        $response = new IvyJsonResponse($outputData);
         $signature = $this->expressService->sign((string)$response->getContent(), $salesChannelContext);
         if ($errorStatus !== null) {
             $response->setStatusCode($errorStatus);
@@ -257,7 +257,7 @@ class ExpressController extends StorefrontController
         }
 
         \ini_set('serialize_precision', '3');
-        $response = new JsonResponse($outputData);
+        $response = new IvyJsonResponse($outputData);
         $signature = $this->expressService->sign(\stripslashes((string)$response->getContent()), $salesChannelContext);
         if ($errorStatus !== null) {
             $response->setStatusCode($errorStatus);
