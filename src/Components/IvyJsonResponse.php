@@ -17,7 +17,7 @@ class IvyJsonResponse extends JsonResponse
      */
     public function __construct($data = null, int $status = 200, array $headers = [], bool $json = false)
     {
-        $this->encodingOptions = $this->encodingOptions | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+        $this->encodingOptions = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
         parent::__construct($data, $status, $headers, $json);
     }
 }
