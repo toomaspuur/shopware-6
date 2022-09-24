@@ -12,12 +12,14 @@ use Shopware\Core\System\SalesChannel\Context\AbstractSalesChannelContextFactory
 use Shopware\Storefront\Framework\Routing\Router;
 use Shopware\Storefront\Framework\Twig\TemplateConfigAccessor;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Routing\RouterInterface;
 use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
 use WizmoGmbh\IvyPayment\Exception\IvyApiException;
 use WizmoGmbh\IvyPayment\IvyApi\ApiClient;
+use Symfony\Component\HttpFoundation\Response;
 
 class ConfigSubscriber implements EventSubscriberInterface
 {
@@ -67,8 +69,9 @@ class ConfigSubscriber implements EventSubscriberInterface
     }
 
     /**
-     * @throws IvyApiException
-     * @throws Exception
+     * @param ResponseEvent $event
+     * @return void
+     * @throws \Exception
      */
     public function onResponse(ResponseEvent $event): void
     {
@@ -80,11 +83,26 @@ class ConfigSubscriber implements EventSubscriberInterface
             if ($salesChannelId === 'null') {
                 $salesChannelId = null;
             }
+            $errors = [];
             if (isset ($kvs['WizmoGmbhIvyPayment.config.ProductionIvyApiKey']) && (string)$kvs['WizmoGmbhIvyPayment.config.ProductionIvyApiKey'] !== '') {
-                $this->updateMerchant($salesChannelId, false);
+                try {
+                    $this->updateMerchant($salesChannelId, false);
+                } catch (\Exception $e) {
+                    $errors[] = $e->getMessage();
+                }
             }
+
             if (isset ($kvs['WizmoGmbhIvyPayment.config.SandboxIvyApiKey']) && (string)$kvs['WizmoGmbhIvyPayment.config.SandboxIvyApiKey'] !== '') {
-                $this->updateMerchant($salesChannelId, true);
+                try {
+                    $this->updateMerchant($salesChannelId, true);
+                } catch (\Exception $e) {
+                    $errors[] = $e->getMessage();
+                }
+            }
+            if (!empty($errors)) {
+                $event->setResponse(new JsonResponse([
+                    'errors' => \implode('; ', $errors),
+                ], Response::HTTP_BAD_REQUEST));
             }
         }
     }
@@ -98,7 +116,7 @@ class ConfigSubscriber implements EventSubscriberInterface
      */
     private function updateMerchant(?string $salesChannelId, bool $isSandBox): void
     {
-        $config = $this->configHandler->getFullConfigBySalesChannelId($salesChannelId, $isSandBox);
+        $config = $this->configHandler->getFullConfigBySalesChannelId($salesChannelId, $isSandBox, true);
         $quoteCallbackUrl = $this->router->generate('frontend.ivyexpress.callback', [], Router::ABSOLUTE_URL);
         $successCallbackUrl = $this->router->generate('ivypayment.finalize.transaction', [], Router::ABSOLUTE_URL);
         $errorCallbackUrl = $this->router->generate('ivypayment.failed.transaction', [], Router::ABSOLUTE_URL);

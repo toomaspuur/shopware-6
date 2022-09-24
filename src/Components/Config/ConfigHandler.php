@@ -109,12 +109,13 @@ class ConfigHandler
     /**
      * @param string|null $salesChannelId
      * @param bool|null $isSandbox
+     * @param bool $force
      * @return array
      * @throws Exception
      */
-    public function getFullConfigBySalesChannelId(?string $salesChannelId, ?bool $isSandbox = null): array
+    public function getFullConfigBySalesChannelId(?string $salesChannelId, ?bool $isSandbox = null, bool $force = false): array
     {
-        if (isset($this->config[$salesChannelId])) {
+        if ($force === false && isset($this->config[$salesChannelId])) {
             return $this->config[$salesChannelId];
         }
 
