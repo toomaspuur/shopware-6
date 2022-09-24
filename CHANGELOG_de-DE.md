@@ -1,3 +1,5 @@
+# 1.1.8
+- Sonderzeichen werden in Quote und Confirm Callback unterstützt
 # 1.1.7
 - Telefonnummer ist Pflichtfeld
 # 1.1.6

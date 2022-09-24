@@ -1,7 +1,7 @@
 {
     "name": "wizmogmbh/ivy-payment",
     "description": "Ivy - Climate Neutral Shopping",
-    "version": "1.1.7",
+    "version": "1.1.8",
     "type": "shopware-platform-plugin",
     "license": "proprietary",
     "authors": [
@@ -28,8 +28,8 @@
         "plugin-icon": "src/Resources/config/plugin.png",
         "copyright": "(c) by Wizmo GmbH",
         "label": {
-            "de-DE": "Ivy - Klimaneutral Einkaufen",
-            "en-GB": "Ivy - Climate Neutral Shopping"
+            "de-DE": "Ivy - Nachhaltig Einkaufen",
+            "en-GB": "Ivy - Shop Sustainably"
         },
         "description": {
             "de-DE": "Ivy ist der einfachste Weg, nachhaltig online einzukaufen. Wir schalten Karten aus und bringen den Planeten wieder ins Spiel. Bei jeder Bezahlung über Ivy, berechnen wir den CO2-Fußabdruck jedes Produkts im Warenkorb (einschließlich Produktion, Versand und Verpackung) und kompensieren ihn zu 100 % ohne zusätzliche Kosten für dich.",

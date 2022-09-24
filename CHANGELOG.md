@@ -1,3 +1,5 @@
+# 1.1.8
+- special characters are supported for payload of complete and confirm callback 
 # 1.1.7
 - mandatory phone number
 # 1.1.6
