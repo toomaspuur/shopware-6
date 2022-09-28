@@ -281,7 +281,7 @@ class ExpressService
             PlatformRequest::HEADER_CONTEXT_TOKEN => $contextToken
         ]);
         // add plugin version as string to know whether or not to redirect to confirmation page after ivy checkout
-        $ivyExpressSessionData->setPlugin('sw6-1.1.8');
+        $ivyExpressSessionData->setPlugin('sw6-1.1.9');
 
         $jsonContent = $this->serializer->serialize($ivyExpressSessionData, 'json');
         $response = $this->ivyApiClient->sendApiRequest('checkout/session/create', $config, $jsonContent);
