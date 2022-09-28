@@ -16,6 +16,7 @@ use Shopware\Core\Framework\Routing\Annotation\RouteScope;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
+use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
 
 /**
  * @RouteScope(scopes={"administration"})
@@ -29,17 +30,26 @@ class ApiTestController
     {
         $env = $dataBag->get('environment');
 
-        if ($env === 'Production' || $env === 'Sandbox') {
-            $apikey = $dataBag->get('WizmoGmbhIvyPayment.config.' . $env . 'IvyApiKey', '');
-            $url = $dataBag->get('WizmoGmbhIvyPayment.config.' . $env . 'IvyApiUrl', '');
-            $data = $this->checkIntegrationReady($url, $apikey);
-
-            return new JsonResponse($data);
+        switch ($env) {
+            case 'Production':
+                $url = ConfigHandler::PROD_API_URL;
+                break;
+            case 'Sandbox':
+                $url = ConfigHandler::SAND_API_URL;
+                break;
+            default:
+                return new JsonResponse(['success' => false]);
         }
-
-        return new JsonResponse(['success' => false]);
+        $apikey = $dataBag->get('WizmoGmbhIvyPayment.config.' . $env . 'IvyApiKey', '');
+        $data = $this->checkIntegrationReady($url, $apikey);
+        return new JsonResponse($data);
     }
 
+    /**
+     * @param string $url
+     * @param string $apikey
+     * @return array
+     */
     private function checkIntegrationReady(string $url, string $apikey): array
     {
         $response['success'] = false;
