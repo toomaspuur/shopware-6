@@ -1,8 +1,8 @@
 ## IvyPayment for Shopware 6 
 
-Ivy - Climate Neutral Shopping
+Ivy - Sustainable Shopping
 
-Ivy is the easiest way to shop online sustainably. We ditch cards and put the planet back into the equation. When paying with Ivy, we calculate the carbon footprint of every product in your basket (including production, shipping and packaging) and compensate it 100% at no extra cost to you.
+Ivy is the easiest way to shop online sustainably. We ditch cards and put the planet back into the equation. When paying with Ivy, customers can select a climate cause they want to give money to at no extra cost to you or your shoppers.
 
 ## License
 
