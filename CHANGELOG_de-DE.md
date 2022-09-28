@@ -1,3 +1,5 @@
+# 1.1.9
+- Zugangsdaten Testen Funktion geht wieder einwandfrei
 # 1.1.8
 - Sonderzeichen werden in Quote und Confirm Callback unterstützt
 # 1.1.7
