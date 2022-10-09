@@ -148,11 +148,40 @@ class ExpressService
     }
 
     /**
+     * @param string $endpoint
+     * @param string $method
+     * @param string $contextToken
+     * @param SalesChannelContext $salesChannelContext
+     * @param array $data
+     * @return JsonResponse
+     */
+    public function storeProxy(
+        string $endpoint,
+        string $method,
+        string $contextToken,
+        SalesChannelContext $salesChannelContext,
+        array $data = []
+    ) : JsonResponse
+    {
+        $request = new Request([],$data);
+        $request->setMethod($method);
+        $request->headers->set(PlatformRequest::HEADER_CONTEXT_TOKEN, $contextToken);
+        /** @var JsonResponse $response */
+        $response = $this->salesChannelProxyController->proxy($endpoint,
+            $salesChannelContext->getSalesChannelId(),
+            $request,
+            $salesChannelContext->getContext()
+        );
+        return $response;
+    }
+
+    /**
      * @param SalesChannelContext $salesChannelContext
      * @return array
      */
     public function getAllShippingVariants(SalesChannelContext $salesChannelContext): array
     {
+        $this->logger->info('getAllShippingVariants for context token: ' . $salesChannelContext->getToken());
         $criteria = new Criteria([$salesChannelContext->getSalesChannelId()]);
         $criteria->addAssociations(['countries', 'country', 'shippingMethods']);
         /** @var SalesChannelEntity $salesChannelLoaded */
@@ -163,18 +192,24 @@ class ExpressService
         }
         $shippingMethods = [];
 
-
         $allowedShippingMethod = $this->getShippingMethods($salesChannelContext);
         /** @var ShippingMethodEntity $shippingMethod */
         foreach ($allowedShippingMethod as $shippingMethod) {
+            $this->logger->info('check shippping method: ' . $shippingMethod->getName() . ' id: ' . $shippingMethod->getId());
             $switchData = [
                 'countryId'        => $salesChannelLoaded->getCountry()->getId(),
                 'paymentMethodId'  => $this->getPaymentMethodId(),
                 'shippingMethodId' => $shippingMethod->getId()
             ];
 
-            $this->channelContextSwitcher->update(new DataBag($switchData), $salesChannelContext);
+            try {
+                $this->channelContextSwitcher->update(new DataBag($switchData), $salesChannelContext);
+            } catch (\Exception $e) {
+                $this->logger->warning('shipping not allowed. skip.');
+                continue;
+            }
             $salesChannelContext = $this->reloadContext($salesChannelContext);
+
             $cart = $this->cartService->getCart($salesChannelContext->getToken(), $salesChannelContext);
             $delivery = $cart->getDeliveries()->first();
             if ($delivery) {
@@ -184,8 +219,11 @@ class ExpressService
                     'reference' => $shippingMethod->getId(),
                     'countries' => $countries,
                 ];
+            } else {
+                $this->logger->info('not delivery found in cart. skip.');
             }
         }
+        $this->logger->debug('allowed shippings: ' . \print_r($shippingMethods, true));
         return $shippingMethods;
     }
 
@@ -205,20 +243,20 @@ class ExpressService
         if (!$shippingMethods->has($context->getShippingMethod()->getId())) {
             $shippingMethods->add($context->getShippingMethod());
         }
-
-        return $shippingMethods;
+        return $shippingMethods->filterByActiveRules($context);
     }
 
     /**
      * @param SalesChannelContext $salesChannelContext
+     * @param string|null $contextToken
      * @return SalesChannelContext
      */
-    public function reloadContext(SalesChannelContext $salesChannelContext): SalesChannelContext
+    public function reloadContext(SalesChannelContext $salesChannelContext, string $contextToken = null): SalesChannelContext
     {
         return $this->contextService->get(
             new SalesChannelContextServiceParameters(
                 $salesChannelContext->getSalesChannelId(),
-                $salesChannelContext->getToken(),
+                $contextToken ?? $salesChannelContext->getToken(),
                 $salesChannelContext->getLanguageId(),
                 $salesChannelContext->getCurrencyId(),
                 $salesChannelContext->getDomainId(),
@@ -294,7 +332,6 @@ class ExpressService
         $tempData = [
             PlatformRequest::HEADER_CONTEXT_TOKEN => $contextToken,
             'sessionId' => $request->getSession()->getId(),
-            'cookies'   => $request->cookies->all(),
         ];
 
         $this->ivyPaymentSessionRepository->upsert([
@@ -317,41 +354,23 @@ class ExpressService
      */
     public function getIvySessionByReference(string $referenceId): ?IvyPaymentSessionEntity
     {
-        $criteria = new Criteria([$referenceId]);
-        /** @var IvyPaymentSessionEntity $ivyPaymentSession */
-        return $this->ivyPaymentSessionRepository->search($criteria, Context::createDefaultContext())->first();
-    }
-
-    /**
-     * @param Request $request
-     * @return void
-     */
-    public function restoreShopwareSession(Request $request): void
-    {
-        $referenceId = $request->get('reference');
-        /** @var IvyPaymentSessionEntity $ivyPaymentSession */
-        $ivyPaymentSession = $this->getIvySessionByReference($referenceId);
-        $tempData = $ivyPaymentSession->getExpressTempData();
-        $cookies = $tempData['cookies'] ?? [];
-        foreach ($cookies as $key => $value) {
-            if (\is_array($value)) {
-                foreach ($value as $key2 => $value2) {
-                    $request->cookies->set($key . "[$key2]", $value2);
-                }
-            } else {
-                $request->cookies->set($key, $value);
+        $context = Context::createDefaultContext();
+        if (\mb_strlen($referenceId, '8bit') !== 32 || !\preg_match('/' . Uuid::VALID_PATTERN . '/', $referenceId)) {
+            // if reference with ordernumber updated
+            $criteria = new Criteria();
+            $criteria->addFilter(new EqualsFilter('orderNumber', $referenceId));
+            /** @var OrderEntity|null $orderEntity */
+            $orderEntity = $this->orderRepository->search($criteria, $context)->first();
+            if ($orderEntity === null) {
+                return null;
             }
+            $criteria = new Criteria();
+            $criteria->addFilter(new EqualsFilter('swOrderId', $orderEntity->getId()));
+        } else {
+            $criteria = new Criteria([$referenceId]);
         }
-        $data = \json_decode($request->getContent(), true);
-        if (\is_array($data)) {
-            $tempData = \array_merge($tempData, $data);
-        }
-        $this->ivyPaymentSessionRepository->update([
-            [
-                'id' => $ivyPaymentSession->getId(),
-                'expressTempData' => $tempData
-            ]
-        ], Context::createDefaultContext());
+        /** @var IvyPaymentSessionEntity $ivyPaymentSession */
+        return $this->ivyPaymentSessionRepository->search($criteria, $context)->first();
     }
 
     /**
@@ -406,6 +425,141 @@ class ExpressService
      * @param array $data
      * @param string $contextToken
      * @param SalesChannelContext $salesChannelContext
+     * @return bool
+     * @throws Exception
+     * @throws IvyException
+     */
+    public function updateUser(
+        array $data,
+        string $contextToken,
+        SalesChannelContext $salesChannelContext
+    ): bool
+    {
+        $this->logger->debug('try to update user');
+        $userData = $this->prepareUserData($data, $salesChannelContext);
+        if (!empty($userData)) {
+            $request = new Request([], []);
+            $request->setMethod('POST');
+            $request->headers->set(PlatformRequest::HEADER_CONTEXT_TOKEN, $contextToken);
+            /** @var JsonResponse $response */
+            $response = $this->salesChannelProxyController->proxy('account/customer',
+                $salesChannelContext->getSalesChannelId(),
+                $request,
+                $salesChannelContext->getContext()
+            );
+            $customerData = \json_decode((string)$response->getContent(), true);
+            if (isset($customerData['guest']) && $customerData['guest']) {
+                $this->logger->info('already guest -> update');
+                $mainData = $userData;
+                $billingAddress = $userData['billingAddress'];
+                $shippingAddress = $userData['shippingAddress'];
+                unset($mainData['billingAddress'], $mainData['shippingAddress'], $mainData['email']);
+
+                $request = new Request([], $mainData);
+                $request->setMethod('POST');
+                $request->headers->set(PlatformRequest::HEADER_CONTEXT_TOKEN, $contextToken);
+                /** @var JsonResponse $response */
+                $response = $this->salesChannelProxyController->proxy(
+                    'change-profile',
+                    $salesChannelContext->getSalesChannelId(),
+                    $request,
+                    $salesChannelContext->getContext()
+                );
+
+                $request = new Request([], $billingAddress);
+                $request->setMethod('PATCH');
+                $request->headers->set(PlatformRequest::HEADER_CONTEXT_TOKEN, $contextToken);
+                /** @var JsonResponse $response */
+                $response = $this->salesChannelProxyController->proxy(
+                    'account/address/' . $customerData['defaultBillingAddressId'],
+                    $salesChannelContext->getSalesChannelId(),
+                    $request,
+                    $salesChannelContext->getContext()
+                );
+
+                $request = new Request([], $shippingAddress);
+                $request->setMethod('PATCH');
+                $request->headers->set(PlatformRequest::HEADER_CONTEXT_TOKEN, $contextToken);
+                /** @var JsonResponse $response */
+                $response = $this->salesChannelProxyController->proxy(
+                    'account/address/' . $customerData['defaultShippingAddressId'],
+                    $salesChannelContext->getSalesChannelId(),
+                    $request,
+                    $salesChannelContext->getContext()
+                );
+
+                $this->logger->info('guest data updated');
+                return true;
+            }
+            $this->logger->info('geust not yet registered, can not update');
+            return false;
+        }
+        throw new IvyException('can not update user from request (empty data)');
+    }
+
+    /**
+     * @param array $data
+     * @param SalesChannelContext $salesChannelContext
+     * @return array
+     * @throws Exception
+     * @throws IvyException
+     */
+    protected function prepareUserData(
+        array $data,
+        SalesChannelContext $salesChannelContext
+    ): array
+    {
+        $billingAddress = $data['billingAddress'] ?? $data['shippingAddress'] ?? $data['shipping']['shippingAddress'] ?? [];
+        $shippingAddress = $data['shippingAddress'] ?? $data['shipping']['shippingAddress'] ?? [];
+        $this->logger->debug('recived address: ' . \print_r($billingAddress, true));
+        if (\is_array($billingAddress) && !empty($billingAddress)) {
+            $countryId = $this->getCountryIdFromAddress($billingAddress, $salesChannelContext);
+            $shippingCountryId = $this->getCountryIdFromAddress($shippingAddress, $salesChannelContext);
+
+            $config = $this->configHandler->getFullConfig($salesChannelContext);
+            $salutationId = $config['defaultSalutation'];
+
+            return [
+                'guest'                  => true,
+                'email'                  => $data['shopperEmail'] ?? '',
+                'defaultPaymentMethodId' => $this->getPaymentMethodId(),
+                'storefrontUrl'          => $this->getStorefrontUrl($salesChannelContext),
+                'accountType'            => 'private',
+                'salutationId'           => $salutationId,
+                'firstName'              => $billingAddress['firstName'] ?? '',
+                'lastName'               => $billingAddress['lastName'] ?? '',
+                'billingAddress'         => [
+                    'salutationId'           => $salutationId,
+                    'firstName'              => $shippingAddress['firstName'] ?? '',
+                    'lastName'               => $shippingAddress['lastName'] ?? '',
+                    'zipcode'                => $billingAddress['zipCode'] ?? '',
+                    'city'                   => $billingAddress['city'] ?? '',
+                    'street'                 => $billingAddress['line1'] ?? '',
+                    'additionalAddressLine1' => $billingAddress['line2'] ?? '',
+                    'countryId'              => $countryId,
+                    'phoneNumber'            => $data['shopperPhone'] ?? '',
+                ],
+                'shippingAddress'        => [
+                    'salutationId'           => $salutationId,
+                    'firstName'              => $shippingAddress['firstName'] ?? '',
+                    'lastName'               => $shippingAddress['lastName'] ?? '',
+                    'zipcode'                => $shippingAddress['zipCode'] ?? '',
+                    'city'                   => $shippingAddress['city'] ?? '',
+                    'street'                 => $shippingAddress['line1'] ?? '',
+                    'additionalAddressLine1' => $shippingAddress['line2'] ?? '',
+                    'countryId'              => $shippingCountryId,
+                    'phoneNumber'            => $data['shopperPhone'] ?? '',
+                ],
+                'acceptedDataProtection' => true,
+            ];
+        }
+        return [];
+    }
+
+    /**
+     * @param array $data
+     * @param string $contextToken
+     * @param SalesChannelContext $salesChannelContext
      * @return JsonResponse
      * @throws Exception
      * @throws IvyException
@@ -416,46 +570,8 @@ class ExpressService
         SalesChannelContext $salesChannelContext
     ): JsonResponse
     {
-        $billingAddress = $data['billingAddress'] ?? $data['shippingAddress'] ?? [];
-        $shippingAddress = $data['shippingAddress'] ?? [];
-        if (\is_array($billingAddress) && !empty($billingAddress)) {
-            $countryId = $this->getCountryIdFromAddress($billingAddress, $salesChannelContext);
-            $shippingCountryId = $this->getCountryIdFromAddress($shippingAddress, $salesChannelContext);
-
-            $config = $this->configHandler->getFullConfig($salesChannelContext);
-            $salutationId = $config['defaultSalutation'];
-
-            $userData = [
-                'guest' => true,
-                'email' => $data['shopperEmail'] ?? '',
-                'defaultPaymentMethodId' => $this->getPaymentMethodId(),
-                'storefrontUrl' => $this->getStorefrontUrl($salesChannelContext),
-                'accountType' => 'private',
-                'salutationId' => $salutationId,
-                'firstName' => $billingAddress['firstName'] ?? '',
-                'lastName' => $billingAddress['lastName'] ?? '',
-                'billingAddress' => [
-                    'zipcode' =>  $billingAddress['zipCode'] ?? '',
-                    'city' =>  $billingAddress['city'] ?? '',
-                    'street' => $billingAddress['line1'] ?? '',
-                    'additionalAddressLine1' => $billingAddress['line2'] ?? '',
-                    'countryId' => $countryId,
-                    'phoneNumber' => $data['shopperPhone'] ?? '',
-                ],
-                'shippingAddress' => [
-                    'salutationId' => $salutationId,
-                    'firstName' => $shippingAddress['firstName'] ?? '',
-                    'lastName' => $shippingAddress['lastName'] ?? '',
-                    'zipcode' =>  $shippingAddress['zipCode'] ?? '',
-                    'city' =>  $shippingAddress['city'] ?? '',
-                    'street' => $shippingAddress['line1'] ?? '',
-                    'additionalAddressLine1' => $shippingAddress['line2'] ?? '',
-                    'countryId' => $shippingCountryId,
-                    'phoneNumber' => $data['shopperPhone'] ?? '',
-                ],
-                'acceptedDataProtection' => true,
-            ];
-
+        $userData = $this->prepareUserData($data, $salesChannelContext);
+        if (!empty($userData)) {
             $request = new Request([], $userData);
             $request->setMethod('POST');
             $request->headers->set(PlatformRequest::HEADER_CONTEXT_TOKEN, $contextToken);
@@ -840,6 +956,21 @@ class ExpressService
             throw new IvyException('country with iso ' . $countryIso . 'not found');
         }
         return $countryId;
+    }
+
+    /**
+     * @param IvyPaymentSessionEntity $ivyPaymentSession
+     * @param SalesChannelContext $salesChannelContext
+     * @return void
+     */
+    public function flushTempData(IvyPaymentSessionEntity $ivyPaymentSession, SalesChannelContext $salesChannelContext): void
+    {
+        $this->ivyPaymentSessionRepository->upsert([
+            [
+                'id'              => $ivyPaymentSession->getId(),
+                'expressTempData' => $ivyPaymentSession->getExpressTempData()
+            ],
+        ], $salesChannelContext->getContext());
     }
 
     /**
