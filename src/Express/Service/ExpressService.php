@@ -953,7 +953,7 @@ class ExpressService
             $countryId = $this->countryRepository->searchIds($criteria, $salesChannelContext)->firstId();
         }
         if ($countryId === null) {
-            throw new IvyException('country with iso ' . $countryIso . 'not found');
+            throw new IvyException('country with iso ' . $countryIso . ' not found');
         }
         return $countryId;
     }

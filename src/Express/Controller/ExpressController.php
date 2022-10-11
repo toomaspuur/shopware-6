@@ -188,8 +188,7 @@ class ExpressController extends StorefrontController
                     $outputData['shippingMethods'] = $this->expressService->getAllShippingVariants($salesChannelContext);
                 } catch (\Exception $e) {
                     $this->logger->error('shipping callback error: ' . $e->getMessage());
-                    $this->logger->debug($e->getTraceAsString());
-                    $errorStatus = $this->handleException($e);
+                    $outputData['shippingMethods'] = [];
                 }
             }
 
@@ -200,19 +199,22 @@ class ExpressController extends StorefrontController
                     $outputData['discount'] = $this->expressService->addPromotion($voucherCode, $salesChannelContext);
                 } catch (\Exception $e) {
                     $this->logger->error('discount callback error: ' . $e->getMessage());
-                    $errorStatus = $this->handleException($e);
+                    $outputData['discount'] = [];
                 }
             }
         } else {
             $errorStatus = Response::HTTP_FORBIDDEN;
         }
 
+        if ($errorStatus !== null) {
+            $outputData['shippingMethods'] = [];
+            $outputData['discount'] = [];
+        }
+
         \ini_set('serialize_precision', '3');
         $response = new IvyJsonResponse($outputData);
         $signature = $this->expressService->sign((string)$response->getContent(), $salesChannelContext);
-        if ($errorStatus !== null) {
-            $response->setStatusCode($errorStatus);
-        }
+
         $response->headers->set('X-Ivy-Signature', $signature);
         $this->logger->info('output body:' . $response->getContent());
         $this->logger->info('X-Ivy-Signature:' . $signature);
