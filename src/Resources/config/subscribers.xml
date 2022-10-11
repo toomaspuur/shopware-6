@@ -24,11 +24,6 @@
             <tag name="shopware.payment.method.async" />
         </service>
 
-        <service id="WizmoGmbh\IvyPayment\Express\Subscriber\KernelSubscriber" public="true">
-            <argument type="service" id="wizmo_gmbh.ivy_payment.express.service.express_service"/>
-            <tag name="kernel.event_subscriber"/>
-        </service>
-
         <service id="WizmoGmbh\IvyPayment\Subscriber\ConfigSubscriber" public="true">
             <argument type="service" id="WizmoGmbh\IvyPayment\Components\Config\ConfigHandler"/>
             <argument type="service" id="router"/>
