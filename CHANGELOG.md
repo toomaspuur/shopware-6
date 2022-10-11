@@ -1,3 +1,5 @@
+# 1.1.10
+- All shipping method logic is respected
 # 1.1.9
 - testing the api key connectivity works again now
 # 1.1.8
