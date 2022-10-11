@@ -18,6 +18,7 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Validator\ConstraintViolationInterface;
 use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
 use WizmoGmbh\IvyPayment\Components\IvyJsonResponse;
+use WizmoGmbh\IvyPayment\Core\Checkout\Order\IvyPaymentSessionEntity;
 use WizmoGmbh\IvyPayment\Exception\IvyException;
 use WizmoGmbh\IvyPayment\Express\Service\ExpressService;
 use WizmoGmbh\IvyPayment\Logger\IvyLogger;
@@ -122,21 +123,72 @@ class ExpressController extends StorefrontController
         $errorStatus = null;
 
         if ($isValid === true) {
-            $data = $inputData->all();
-            $this->logger->info('cookies:' . \print_r($request->cookies->all(), true));
+            $payload = $data = $inputData->all();
+            $referenceId = $request->get('reference');
+            $this->logger->info('callback reference: ' . $referenceId);
+            /** @var IvyPaymentSessionEntity $ivyPaymentSession */
+            $ivyPaymentSession = $this->expressService->getIvySessionByReference($referenceId);
+
+            try {
+                if ($ivyPaymentSession === null) {
+                    throw new IvyException('ivy transaction by reference ' . $referenceId . ' not found');
+                }
+                $tempData = $ivyPaymentSession->getExpressTempData();
+                if (\is_array($data)) {
+                    $tempData = \array_merge($tempData, $data);
+                }
+
+                $contextToken = $tempData[PlatformRequest::HEADER_CONTEXT_TOKEN];
+                $this->logger->info('found context token ' . $contextToken);
+                $salesChannelContext = $this->expressService->reloadContext($salesChannelContext, $contextToken);
+                $this->logger->info('loaded context with token : ' . $salesChannelContext->getToken() . ' customerId: ' . $salesChannelContext->getCustomerId());
+
+                $updated =  $this->expressService->updateUser( $payload, $contextToken, $salesChannelContext);
+                if (!$updated) {
+                    $this->logger->debug('not updated, try to create new guest and login');
+                    $storeApiResponse = $this->expressService->createAndLoginQuickCustomer(
+                        $payload,
+                        $contextToken,
+                        $salesChannelContext
+                    );
+                    $customerData = \json_decode((string)$storeApiResponse->getContent(), true);
+                    if ((string)($customerData['email'] ?? '') === '') {
+                        $message = 'cann not create customer. Status code: ' . $storeApiResponse->getStatusCode() . ' body: ' . $storeApiResponse->getContent();
+                        throw new IvyException($message);
+                    }
+                    $this->logger->info('created customer: ' .  $customerData['email']);
+                    $contextToken = $storeApiResponse->headers->get(PlatformRequest::HEADER_CONTEXT_TOKEN);
+                    $this->logger->info('new context token: ' .  $contextToken);
+                    $salesChannelContext = $this->expressService->reloadContext($salesChannelContext, $contextToken);
+                    $this->logger->info('loaded new context. Token: ' . $salesChannelContext->getToken() . ', customerId: ' . $salesChannelContext->getCustomerId());
+                    $this->logger->info('save new context token');
+                    $tempData[PlatformRequest::HEADER_CONTEXT_TOKEN] = $contextToken;
+                    $ivyPaymentSession->setExpressTempData($tempData);
+                }
+            } catch (\Exception $e) {
+                $errorStatus = $this->handleException($e);
+            }
+
+            $this->expressService->flushTempData($ivyPaymentSession, $salesChannelContext);
+            $salesChannelContext = $this->expressService->reloadContext($salesChannelContext, $contextToken);
+
+            $customer = $salesChannelContext->getCustomer();
+            $activeShipping = $customer ? $customer->getActiveShippingAddress() : null;
+            $activeShippingCountry = $activeShipping ? $activeShipping->getCountry() : null;
+            if ($activeShippingCountry) {
+                $this->logger->debug('active shipping country: ' . $activeShippingCountry->getName());
+            } else {
+                $this->logger->debug('not shipping country found in context');
+            }
+            $salesChannelContext = $this->expressService->reloadContext($salesChannelContext, $contextToken);
 
             $shipping = $data['shipping'] ?? null;
             if (\is_array($shipping) && isset($shipping['shippingAddress'])) {
                 try {
-                    $countryValid = $this->expressService->switchShippingContext($shipping['shippingAddress'], $salesChannelContext);
-                    if ($countryValid === true) {
-                        $outputData['shippingMethods'] = $this->expressService->getAllShippingVariants($salesChannelContext);
-                    } else {
-                        $outputData['shippingMethods'] = [];
-                    }
+                    $outputData['shippingMethods'] = $this->expressService->getAllShippingVariants($salesChannelContext);
                 } catch (\Exception $e) {
                     $this->logger->error('shipping callback error: ' . $e->getMessage());
-                    $errorStatus = $this->handleException($e);
+                    $outputData['shippingMethods'] = [];
                 }
             }
 
@@ -147,19 +199,22 @@ class ExpressController extends StorefrontController
                     $outputData['discount'] = $this->expressService->addPromotion($voucherCode, $salesChannelContext);
                 } catch (\Exception $e) {
                     $this->logger->error('discount callback error: ' . $e->getMessage());
-                    $errorStatus = $this->handleException($e);
+                    $outputData['discount'] = [];
                 }
             }
         } else {
             $errorStatus = Response::HTTP_FORBIDDEN;
         }
 
+        if ($errorStatus !== null) {
+            $outputData['shippingMethods'] = [];
+            $outputData['discount'] = [];
+        }
+
         \ini_set('serialize_precision', '3');
         $response = new IvyJsonResponse($outputData);
         $signature = $this->expressService->sign((string)$response->getContent(), $salesChannelContext);
-        if ($errorStatus !== null) {
-            $response->setStatusCode($errorStatus);
-        }
+
         $response->headers->set('X-Ivy-Signature', $signature);
         $this->logger->info('output body:' . $response->getContent());
         $this->logger->info('X-Ivy-Signature:' . $signature);
@@ -207,35 +262,28 @@ class ExpressController extends StorefrontController
                 }
                 $this->logger->debug('loaded ivy session data from db');
                 $tempData = $ivyPaymentSession->getExpressTempData();
-                if ($contextToken !== $tempData[PlatformRequest::HEADER_CONTEXT_TOKEN]) {
-                    throw new IvyException('invalid sw-context-token ' . $contextToken);
-                }
+
+                $contextToken = $tempData[PlatformRequest::HEADER_CONTEXT_TOKEN];
+                $this->logger->info('found context token ' . $contextToken);
+                $salesChannelContext = $this->expressService->reloadContext($salesChannelContext, $contextToken);
+                $this->logger->info('loaded context with token : ' . $salesChannelContext->getToken() . ' customerId: ' . $salesChannelContext->getCustomerId());
 
                 $contextToken = $this->expressService->setShippingMethod($payload, $contextToken, $salesChannelContext);
                 $this->logger->info('new context token: ' .  $contextToken);
-                $this->expressService->validateConfirmPayload($payload, $contextToken, $salesChannelContext);
 
+                $this->expressService->updateUser($payload, $contextToken,$salesChannelContext);
+                $salesChannelContext = $this->expressService->reloadContext($salesChannelContext, $contextToken);
+
+                $this->expressService->validateConfirmPayload($payload, $contextToken, $salesChannelContext);
 
                 $payload['shopperEmail'] = $tempData['shopperEmail'];
                 $payload['shopperPhone'] = $tempData['shopperPhone'];
                 $this->logger->debug('shopperEmail: ' . $payload['shopperEmail']);
                 $this->logger->debug('shopperPhone: ' . $payload['shopperPhone']);
 
-                $storeApiResponse = $this->expressService->createAndLoginQuickCustomer(
-                    $payload,
-                    $contextToken,
-                    $salesChannelContext
-                );
-                $customerData = \json_decode((string)$storeApiResponse->getContent(), true);
-                if ((string)($customerData['email'] ?? '') === '') {
-                    $message = 'cann not create customer. Status code: ' . $storeApiResponse->getStatusCode() . ' body: ' . $storeApiResponse->getContent();
-                    throw new IvyException($message);
-                }
-                $this->logger->info('created customer: ' .  $customerData['email']);
-                $contextToken = $storeApiResponse->headers->get(PlatformRequest::HEADER_CONTEXT_TOKEN);
-                $this->logger->info('new context token: ' .  $contextToken);
-
+                $tempData[PlatformRequest::HEADER_CONTEXT_TOKEN] = $contextToken;
                 $ivyPaymentSession->setExpressTempData($tempData);
+                $this->expressService->flushTempData($ivyPaymentSession, $salesChannelContext);
 
                 $orderData = $this->expressService->checkoutConfirm(
                     $ivyPaymentSession,
@@ -290,7 +338,7 @@ class ExpressController extends StorefrontController
             $swOrderId = $ivyPaymentSession->getSwOrderId();
             $swOrder = $this->expressService->getExpressOrder($swOrderId, $salesChannelContext);
 
-            $this->expressService->updateIvyExpressOrder($ivyPaymentSession, $swOrder->getOrderNumber(), $ivyOrderId, $salesChannelContext);
+            $this->expressService->updateIvyExpressOrder($ivyPaymentSession, $swOrder->getOrderNumber(), (string)$ivyOrderId, $salesChannelContext);
 
             $page = $this->genericLoader->load($request, $salesChannelContext);
             $page = CheckoutFinishPage::createFrom($page);
