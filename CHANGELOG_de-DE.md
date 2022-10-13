@@ -1,3 +1,5 @@
+# 1.1.11
+- Checkout Banner erscheint immer
 # 1.1.10
 - Versandmethoden Preismatrizen und weitere Logiken berücksichtigt
 # 1.1.9

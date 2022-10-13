@@ -1,3 +1,5 @@
+# 1.1.11
+- checkout banner appears always
 # 1.1.10
 - All shipping method logic is respected
 # 1.1.9
