@@ -13,8 +13,8 @@
                 data-checkout-error-url="{{ path('frontend.account.edit-order.page', {'orderId':'-orderId-'}) }}"
              {% endif %}
         >
-            {% if payment.id is same as(selectedPaymentMethodId) %}
-                <script src="{{ page.IvyButtonUrl }}" async></script>
+            {% if payment.id is same as(selectedPaymentMethodId) %}            
+                <template data-src="{{ page.IvyButtonUrl }}"></template>
             {% endif %}
             <span class="ivy-pay-logo">
                 <img src="/bundles/wizmogmbhivypayment/static/img/ivyLogoSmall.png" alt="IVY" title="IVY" class="ivy-s ivy-green"></span>
@@ -38,8 +38,7 @@
                             data-project-id="io1"
                             data-shop-logo="{{ theme_config('sw-logo-desktop') |sw_encode_url }}"
                         ></div>
-                        <script src="{{ page.IvyBannerUrl }}" async></script>
-
+                        <template data-src="{{ page.IvyBannerUrl }}"></template>
                     {% else %}
 
                         {{ parent() }}

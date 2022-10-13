@@ -1,37 +1,45 @@
-import Plugin from 'src/plugin-system/plugin.class';
+import Plugin from "src/plugin-system/plugin.class";
 
 export default class IvyPaymentPlugin extends Plugin {
+  init() {
+    var scriptElements = this.el.getElementsByTagName("template");
 
+    Array.from(scriptElements).forEach((scriptEle) => {
+      let scripts = Array.from(document.querySelectorAll("script")).map(
+        (scr) => scr.src
+      );
 
-    init() {
-        var scriptSrc = this.el.getElementsByTagName("script")[0].src;
+      if (scriptEle.dataset.src) {
+        if (!scripts.includes(scriptEle.dataset.src)) {
+          this.loadScript(scriptEle, this.docLoaded);
+        } else {
+          this.docLoaded();
+        }
+      }
+    });
+  }
 
-        this.loadScript(scriptSrc, this.docLoaded);
+  loadScript(scriptEle, callback) {
+    var script = document.createElement("script");
+    script.defer = true;
+    script.type = "text/javascript";
 
-    }
+    // Then bind the event to the callback function.
+    // There are several events for cross browser compatibility.
+    script.onreadystatechange = callback;
+    script.onload = callback;
 
-    loadScript(url, callback) {
-        var div = this.el;
-        var script = document.createElement('script');
-        script.async = false;
-        script.type = 'text/javascript';
-        script.src = url;
+    // Fire the loading
+    script.src = scriptEle.dataset.src;
+    document.head.append(script);
+  }
 
-        // Then bind the event to the callback function.
-        // There are several events for cross browser compatibility.
-        script.onreadystatechange = callback;
-        script.onload = callback;
-
-        // Fire the loading
-        div.appendChild(script);
-    }
-
-    docLoaded() {
-        window.document.dispatchEvent(new Event("DOMContentLoaded", {
-            bubbles: true,
-            cancelable: true
-        }));
-    }
-
-
+  docLoaded() {
+    window.document.dispatchEvent(
+      new Event("DOMContentLoaded", {
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+  }
 }

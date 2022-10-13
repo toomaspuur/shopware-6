@@ -12,7 +12,7 @@
                 data-locale="{{ 'ivypaymentplugin.ivy-modal.ivyLocale'|trans|sw_sanitize }}"
                 data-currency-code="{{ context.currency.isoCode }}"
             ></button>
-            <script src="{{ page.IvyButtonUrl }}" async></script>
+            <template data-src="{{ page.IvyButtonUrl }}"></template>
         </div>
     {% else %}
         <div id="IvyOffcanvasCart">
@@ -25,7 +25,7 @@
                 data-locale="{{ 'ivypaymentplugin.ivy-modal.ivyLocale'|trans|sw_sanitize }}"
                 data-shop-logo="{{ theme_config('sw-logo-desktop') |sw_encode_url }}"
             ></div>
-            <script src="{{ page.IvyBannerUrl}}" async></script>
+            <template data-src="{{ page.IvyBannerUrl}}"></template>
         </div>
     {% endif %}
 {% endblock %}

@@ -15,6 +15,6 @@
                 data-locale="{{ 'ivypaymentplugin.ivy-modal.ivyLocale'|trans|sw_sanitize }}"
                 data-currency-code="{{ context.currency.isoCode }}"
             ></button>
-            <script src="{{ page.IvyButtonUrl }}" async></script>
+            <template data-src="{{ page.IvyButtonUrl }}"></template>
         </div>
 {% endblock %}
