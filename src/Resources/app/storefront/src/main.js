@@ -8,6 +8,7 @@ const PluginManager = window.PluginManager;
 PluginManager.register('IvyPaymentOffcanvasCart', IvyPaymentOffcanvasCart, '#IvyOffcanvasCart');
 PluginManager.register('IvyExpressCheckoutPlugin', IvyExpressCheckoutPlugin, '.ivy--express-checkout-btn');
 PluginManager.register('IvyCheckoutConfirmPlugin', IvyCheckoutConfirmPlugin, '[data-ivy-checkout="true"]');
+PluginManager.register('IvyPaymentMethod', IvyPaymentOffcanvasCart, '#ivy-payment-method');
 
 // Necessary for the webpack hot module reloading server
 if (module.hot) {

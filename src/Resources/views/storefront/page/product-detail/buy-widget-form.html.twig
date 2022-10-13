@@ -42,7 +42,7 @@
                 data-locale="{{ 'ivypaymentplugin.ivy-modal.ivyLocale'|trans|sw_sanitize }}"
                 data-currency-code="{{ context.currency.isoCode }}"
             ></div>
-            <script src="{{ page.IvyButtonUrl }}"></script>
+            <template data-src="{{ page.IvyButtonUrl }}"></template>
         </div>
     </div>
 {% endblock %}
