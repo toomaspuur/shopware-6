@@ -2,7 +2,7 @@
 
 {% block page_checkout_address_login_toggle %}
     {{ parent() }}
-    {% if context.customer === null %}
+    {% if context.customer == null %}
         <div class="ivy--express-checkout-register col-6 col-md-6">
             <div class="ivy--express-checkout-btn" data-action="{{ path('frontend.ivyexpress.start') }}">
                 <button
