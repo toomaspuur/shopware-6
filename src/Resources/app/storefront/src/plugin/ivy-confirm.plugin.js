@@ -38,42 +38,4 @@ export default class IvyCheckoutConfirmPlugin extends IvyPaymentPlugin {
             }
         });
     }
-
-    initPayment(response) {
-        let order;
-        try {
-            order = JSON.parse(response);
-        } catch (error) {
-            ElementLoadingIndicatorUtil.remove(document.body);
-            console.error(error);
-            return;
-        }
-        this._client.post(
-            this.el.dataset.checkoutPayUrl,
-            JSON.stringify({
-                'orderId': order.id,
-                'finishUrl': this.el.dataset.checkoutFinishUrl.replace('-orderId-', order.id),
-                'errorUrl': this.el.dataset.checkoutErrorUrl.replace('-orderId-', order.id),
-            }),
-            this.handlePaymentresponse.bind(this));
-    }
-
-    handlePaymentresponse(response) {
-        try {
-            let decodedResponse = JSON.parse(response);
-            if (decodedResponse.redirectUrl) {
-                if (typeof startIvyCheckout === 'function') {
-                    startIvyCheckout(decodedResponse.redirectUrl, 'popup');
-                } else {
-                    console.error('startIvyCheckout is not defined');
-                }
-            } else {
-                console.error('cannot create ivy session');
-            }
-        } catch (error) {
-            ElementLoadingIndicatorUtil.remove(document.body);
-            console.error(error);
-        }
-        ElementLoadingIndicatorUtil.remove(document.body);
-    }
 }
