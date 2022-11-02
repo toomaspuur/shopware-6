@@ -126,8 +126,7 @@ class createIvyOrderData
         } else {
             $customer = $context->getCustomer();
             if ($customer) {
-                $prefill = new prefill();
-                $prefill->setEmail((string)$customer->getEmail());
+                $prefill = new prefill($customer->getEmail());
                 $ivySessionData->setPrefill($prefill);
                 $activeBillingAddress = $customer->getActiveBillingAddress();
                 if ($activeBillingAddress) {
