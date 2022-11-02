@@ -65,7 +65,8 @@ class createIvyOrderData
             ->addShippingMethod($shippingMethod)
             ->setBillingAddress($billingAddress)
             ->setCategory($config['IvyMcc'] ?? '')
-            ->setReferenceId($order->getId());
+            ->setReferenceId($order->getId())
+            ->setHandshake(true);
 
         return $data;
     }
@@ -74,10 +75,17 @@ class createIvyOrderData
      * @param Cart $cart
      * @param SalesChannelContext $context
      * @param array $config
+     * @param bool $isExpress
      * @param bool $skipShipping
      * @return sessionCreate
      */
-    public function getSessionExpressDataFromCart(Cart $cart, SalesChannelContext $context, array $config, bool $skipShipping = false): sessionCreate
+    public function getSessionExpressDataFromCart(
+        Cart $cart,
+        SalesChannelContext $context,
+        array $config,
+        bool $isExpress,
+        bool $skipShipping = false
+    ): sessionCreate
     {
         $cartPrice = $cart->getPrice();
         $shippingPrice = $cart->getShippingCosts();
@@ -109,8 +117,25 @@ class createIvyOrderData
         $ivySessionData->setPrice($price)
             ->setLineItems($ivyLineItems)
             ->addShippingMethod($shippingMethod)
-            ->setCategory($config['IvyMcc'] ?? '')
-            ->setExpress(true);
+            ->setCategory($config['IvyMcc'] ?? '');
+        if ($isExpress) {
+            $ivySessionData
+                ->setExpress(true)
+                ->setHandshake(null);
+        } else {
+            $activeBillingAddress = $context->getCustomer()->getActiveBillingAddress();
+            $billingAddress = new address();
+            $billingAddress
+                ->setLine1($activeBillingAddress->getStreet())
+                ->setCity($activeBillingAddress->getCity())
+                ->setZipCode($activeBillingAddress->getZipCode())
+                ->setCountry($activeBillingAddress->getCountry()->getIso());
+            $ivySessionData
+                ->setExpress(false)
+                ->setBillingAddress($billingAddress)
+                ->setHandshake(true);
+        }
+
         return $ivySessionData;
     }
 

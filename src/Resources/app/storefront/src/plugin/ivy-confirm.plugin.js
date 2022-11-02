@@ -1,16 +1,15 @@
 import IvyPaymentPlugin from "./offcanvas-cart.plugin";
 import DomAccess from 'src/helper/dom-access.helper';
-import StoreApiClient from 'src/service/store-api-client.service';
-import FormSerializeUtil from 'src/utility/form/form-serialize.util';
+import HttpClient from 'src/service/http-client.service';
 import ElementLoadingIndicatorUtil from 'src/utility/loading-indicator/element-loading-indicator.util';
+import AjaxOffCanvas from 'src/plugin/offcanvas/ajax-offcanvas.plugin';
 
 export default class IvyCheckoutConfirmPlugin extends IvyPaymentPlugin {
     init() {
         super.init();
-        this._client = new StoreApiClient();
+        this._client = new HttpClient();
         this.confirmOrderForm = DomAccess.querySelector(document, '#confirmOrderForm');
         this.confirmFormSubmit = DomAccess.querySelector(document, '#confirmOrderForm button[type="submit"]');
-        this.responseHandler = this.handlePaymentAction;
         this.confirmFormSubmit.addEventListener('click', this.onConfirmOrderSubmit.bind(this));
     }
     onConfirmOrderSubmit() {
@@ -18,15 +17,26 @@ export default class IvyCheckoutConfirmPlugin extends IvyPaymentPlugin {
             return;
         }
         event.preventDefault();
-        this.createOrder();
+        this.createSession();
     }
 
-    createOrder() {
+    createSession() {
         ElementLoadingIndicatorUtil.create(document.body);
-        this._client.post(
-            this.el.dataset.checkoutOrderUrl,
-            FormSerializeUtil.serialize(this.confirmOrderForm),
-            this.initPayment.bind(this));
+        AjaxOffCanvas.close();
+        this._client.get(this.el.dataset.action, function(response) {
+            ElementLoadingIndicatorUtil.remove(document.body);
+            let decodedResponse = JSON.parse(response);
+            if (decodedResponse.redirectUrl) {
+                if (typeof startIvyCheckout === 'function') {
+                    startIvyCheckout(decodedResponse.redirectUrl, 'popup');
+                } else {
+                    console.error('startIvyCheckout is not defined');
+                }
+            } else {
+                console.error('cannot create ivy session');
+                location.reload();
+            }
+        });
     }
 
     initPayment(response) {
