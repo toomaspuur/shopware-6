@@ -803,6 +803,7 @@ class ExpressService
         );
         $cartData = \json_decode((string)$response->getContent(), true);
 
+        $this->logger->debug('cartData in Shopware: ' . \print_r($cartData, true));
 
         $cartPrice = $cartData['price'];
         $shippingPrice = $cartData['deliveries'][0]['shippingCosts'];
