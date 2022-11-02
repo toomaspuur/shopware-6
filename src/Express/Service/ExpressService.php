@@ -313,7 +313,7 @@ class ExpressService
         $config = $this->configHandler->getFullConfig($salesChannelContext);
         $token = $salesChannelContext->getToken();
         $cart = $this->cartService->getCart($token, $salesChannelContext);
-        $ivySessionData = $this->createIvyOrderData->getSessionExpressDataFromCart(
+        $ivySessionData = $this->createIvyOrderData->getIvySessionDataFromCart(
             $cart,
             $salesChannelContext,
             $config,
@@ -369,7 +369,7 @@ class ExpressService
         $config = $this->configHandler->getFullConfig($salesChannelContext);
         $token = $salesChannelContext->getToken();
         $cart = $this->cartService->getCart($token, $salesChannelContext);
-        $ivyExpressSessionData = $this->createIvyOrderData->getSessionExpressDataFromCart(
+        $ivyExpressSessionData = $this->createIvyOrderData->getIvySessionDataFromCart(
             $cart,
             $salesChannelContext,
             $config,
@@ -803,8 +803,6 @@ class ExpressService
         );
         $cartData = \json_decode((string)$response->getContent(), true);
 
-        $this->logger->debug('cartData in Shopware: ' . \print_r($cartData, true));
-
         $cartPrice = $cartData['price'];
         $shippingPrice = $cartData['deliveries'][0]['shippingCosts'];
         $shippingVat = $shippingPrice['calculatedTaxes'][0]['tax'];
@@ -981,7 +979,7 @@ class ExpressService
         $lineItem = $cart->getLineItems()->last();
 
         $config = $this->configHandler->getFullConfig($salesChannelContext);
-        $ivyExpressSessionData = $this->createIvyOrderData->getSessionExpressDataFromCart(
+        $ivyExpressSessionData = $this->createIvyOrderData->getIvySessionDataFromCart(
             $cart,
             $salesChannelContext,
             $config,

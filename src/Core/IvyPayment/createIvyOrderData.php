@@ -79,7 +79,7 @@ class createIvyOrderData
      * @param bool $skipShipping
      * @return sessionCreate
      */
-    public function getSessionExpressDataFromCart(
+    public function getIvySessionDataFromCart(
         Cart $cart,
         SalesChannelContext $context,
         array $config,
