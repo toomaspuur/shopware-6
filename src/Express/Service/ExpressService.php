@@ -544,7 +544,7 @@ class ExpressService
                 $request->headers->set(PlatformRequest::HEADER_CONTEXT_TOKEN, $contextToken);
                 /** @var JsonResponse $response */
                 $response = $this->salesChannelProxyController->proxy(
-                    'change-profile',
+                    'account/change-profile',
                     $salesChannelContext->getSalesChannelId(),
                     $request,
                     $salesChannelContext->getContext()
