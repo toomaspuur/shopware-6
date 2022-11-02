@@ -247,7 +247,10 @@ class ExpressService
             true,
             true
         );
-        $outputData['price'] = $ivyExpressSessionData->getPrice();
+        $price = $ivyExpressSessionData->getPrice();
+        $outputData['price']['totalNet'] = $price->getTotalNet();
+        $outputData['price']['vat'] = $price->getVat();
+        $outputData['price']['total'] = $price->getTotal();
     }
 
     /**
@@ -1008,7 +1011,10 @@ class ExpressService
         } else {
             $outputData['discount'] = [];
         }
-        $outputData['price'] = $ivyExpressSessionData->getPrice();
+        $price = $ivyExpressSessionData->getPrice();
+        $outputData['price']['totalNet'] = $price->getTotalNet();
+        $outputData['price']['vat'] = $price->getVat();
+        $outputData['price']['total'] = $price->getTotal();
     }
 
     /**
