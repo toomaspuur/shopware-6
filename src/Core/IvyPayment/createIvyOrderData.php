@@ -24,6 +24,7 @@ use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\SalesChannel\SalesChannelEntity;
 use WizmoGmbh\IvyPayment\IvyApi\address;
 use WizmoGmbh\IvyPayment\IvyApi\lineItem;
+use WizmoGmbh\IvyPayment\IvyApi\prefill;
 use WizmoGmbh\IvyPayment\IvyApi\price;
 use WizmoGmbh\IvyPayment\IvyApi\sessionCreate;
 use WizmoGmbh\IvyPayment\IvyApi\shippingMethod;
@@ -123,16 +124,25 @@ class createIvyOrderData
                 ->setExpress(true)
                 ->setHandshake(null);
         } else {
-            $activeBillingAddress = $context->getCustomer()->getActiveBillingAddress();
-            $billingAddress = new address();
-            $billingAddress
-                ->setLine1($activeBillingAddress->getStreet())
-                ->setCity($activeBillingAddress->getCity())
-                ->setZipCode($activeBillingAddress->getZipCode())
-                ->setCountry($activeBillingAddress->getCountry()->getIso());
+            $customer = $context->getCustomer();
+            if ($customer) {
+                $prefill = new prefill();
+                $prefill->setEmail($customer->getEmail());
+                $ivySessionData->setPrefill($prefill);
+                $activeBillingAddress = $customer->getActiveBillingAddress();
+                if ($activeBillingAddress) {
+                    $billingAddress = new address();
+                    $billingAddress
+                        ->setLine1($activeBillingAddress->getStreet())
+                        ->setCity($activeBillingAddress->getCity())
+                        ->setZipCode($activeBillingAddress->getZipCode())
+                        ->setCountry($activeBillingAddress->getCountry()->getIso());
+                    $ivySessionData->setBillingAddress($billingAddress);
+                }
+            }
+
             $ivySessionData
                 ->setExpress(false)
-                ->setBillingAddress($billingAddress)
                 ->setHandshake(true);
         }
 
