@@ -12,6 +12,7 @@ namespace WizmoGmbh\IvyPayment\Core\IvyPayment;
 
 use Shopware\Core\Checkout\Cart\Cart;
 use Shopware\Core\Checkout\Cart\Price\Struct\CalculatedPrice;
+use Shopware\Core\Checkout\Customer\CustomerEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderLineItem\OrderLineItemEntity;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Shipping\ShippingMethodEntity;
@@ -124,12 +125,14 @@ class createIvyOrderData
                 ->setExpress(true)
                 ->setHandshake(null);
         } else {
+            /** @var CustomerEntity $customer */
             $customer = $context->getCustomer();
             if ($customer) {
-                $prefill = new prefill($customer->getEmail(), '');
+                $prefill = new prefill($customer->getEmail());
                 $ivySessionData->setPrefill($prefill);
                 $activeBillingAddress = $customer->getActiveBillingAddress();
                 if ($activeBillingAddress) {
+                    $prefill->setPhone($activeBillingAddress->getPhoneNumber());
                     $billingAddress = new address();
                     $billingAddress
                         ->setLine1($activeBillingAddress->getStreet())

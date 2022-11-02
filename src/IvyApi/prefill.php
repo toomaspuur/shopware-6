@@ -12,9 +12,9 @@ namespace WizmoGmbh\IvyPayment\IvyApi;
 class prefill
 {
     /** @var string|null */
-    private string $email;
+    private ?string $email;
     /** @var string|null */
-    private string $phone;
+    private ?string $phone;
 
     /**
      * @param string|null $email
