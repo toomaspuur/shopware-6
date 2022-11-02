@@ -187,9 +187,11 @@ class ExpressService
 
     /**
      * @param SalesChannelContext $salesChannelContext
-     * @return array
+     * @param $outputData
+     * @return void
+     * @throws Exception
      */
-    public function getAllShippingVariants(SalesChannelContext $salesChannelContext): array
+    public function getAllShippingVariants(SalesChannelContext $salesChannelContext, &$outputData): void
     {
         $this->logger->info('getAllShippingVariants for context token: ' . $salesChannelContext->getToken());
         $criteria = new Criteria([$salesChannelContext->getSalesChannelId()]);
@@ -234,7 +236,18 @@ class ExpressService
             }
         }
         $this->logger->debug('allowed shippings: ' . \print_r($shippingMethods, true));
-        return $shippingMethods;
+        $outputData['shippingMethods'] = $shippingMethods;
+
+        $cart = $this->cartService->getCart($salesChannelContext->getToken(), $salesChannelContext);
+        $config = $this->configHandler->getFullConfig($salesChannelContext);
+        $ivyExpressSessionData = $this->createIvyOrderData->getIvySessionDataFromCart(
+            $cart,
+            $salesChannelContext,
+            $config,
+            true,
+            true
+        );
+        $outputData['price'] = $ivyExpressSessionData->getPrice();
     }
 
     /**
@@ -959,11 +972,12 @@ class ExpressService
     /**
      * @param string $code
      * @param SalesChannelContext $salesChannelContext
-     * @return array
+     * @param $outputData
+     * @return void
      * @throws Exception
      * @throws IvyException
      */
-    public function addPromotion(string $code, SalesChannelContext $salesChannelContext): array
+    public function addPromotion(string $code, SalesChannelContext $salesChannelContext, &$outputData): void
     {
         if ($code === '') {
             throw new IvyException('Discount code is required');
@@ -983,16 +997,18 @@ class ExpressService
             $cart,
             $salesChannelContext,
             $config,
+            true,
             true
         );
 
         if ($lineItem && ($discountPrice = $lineItem->getPrice()) !== null) {
-            return [
+            $outputData['discount'] = [
                 'amount' => -$discountPrice->getTotalPrice(),
-                'price' => $ivyExpressSessionData->getPrice()
             ];
+        } else {
+            $outputData['discount'] = [];
         }
-        return [];
+        $outputData['price'] = $ivyExpressSessionData->getPrice();
     }
 
     /**

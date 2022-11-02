@@ -209,7 +209,7 @@ class ExpressController extends StorefrontController
             $shipping = $data['shipping'] ?? null;
             if (\is_array($shipping) && isset($shipping['shippingAddress'])) {
                 try {
-                    $outputData['shippingMethods'] = $this->expressService->getAllShippingVariants($salesChannelContext);
+                    $this->expressService->getAllShippingVariants($salesChannelContext, $outputData);
                 } catch (\Exception $e) {
                     $this->logger->error('shipping callback error: ' . $e->getMessage());
                     $outputData['shippingMethods'] = [];
@@ -220,7 +220,7 @@ class ExpressController extends StorefrontController
             if (\is_array($discount) && isset($discount['voucher'])) {
                 $voucherCode = (string)$discount['voucher'];
                 try {
-                    $outputData['discount'] = $this->expressService->addPromotion($voucherCode, $salesChannelContext);
+                    $this->expressService->addPromotion($voucherCode, $salesChannelContext, $outputData);
                 } catch (\Exception $e) {
                     $this->logger->error('discount callback error: ' . $e->getMessage());
                     $outputData['discount'] = [];
