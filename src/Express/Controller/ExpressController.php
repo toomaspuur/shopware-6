@@ -366,10 +366,17 @@ class ExpressController extends StorefrontController
                 throw new IvyException('try to finish express order in other session');
             }
 
+            $tempData = $ivyPaymentSession->getExpressTempData();
+            $isExpress = $tempData['express'] ?? true;
+
             $swOrderId = $ivyPaymentSession->getSwOrderId();
             $swOrder = $this->expressService->getExpressOrder($swOrderId, $salesChannelContext);
 
             $this->expressService->updateIvyExpressOrder($ivyPaymentSession, $swOrder->getOrderNumber(), (string)$ivyOrderId, $salesChannelContext);
+
+            if (!$isExpress) {
+                return $this->redirectToRoute('frontend.checkout.finish.page', ['orderId' => $swOrderId]);
+            }
 
             $page = $this->genericLoader->load($request, $salesChannelContext);
             $page = CheckoutFinishPage::createFrom($page);
@@ -377,12 +384,16 @@ class ExpressController extends StorefrontController
                 $page->getMetaInformation()->setRobots('noindex,follow');
             }
 
-            Profiler::trace(
-                'finish-page-order-loading',
-                static function () use ($page, $swOrder): void {
-                    $page->setOrder($swOrder);
-                }
-            );
+            if (\class_exists(Profiler::class)) {
+                Profiler::trace(
+                    'finish-page-order-loading',
+                    static function () use ($page, $swOrder): void {
+                        $page->setOrder($swOrder);
+                    }
+                );
+            } else {
+                $page->setOrder($swOrder);
+            }
 
             $page->setChangedPayment(false);
             $page->setPaymentFailed(false);
@@ -394,7 +405,9 @@ class ExpressController extends StorefrontController
             if ($page->getOrder()->getTotalRounding()) {
                 $salesChannelContext->setTotalRounding($page->getOrder()->getTotalRounding());
             }
-            $this->hook(new CheckoutFinishPageLoadedHook($page, $salesChannelContext));
+            if (\method_exists($this, 'hook')) {
+                $this->hook(new CheckoutFinishPageLoadedHook($page, $salesChannelContext));
+            }
             return $this->renderStorefront(
                 '@Storefront/storefront/page/checkout/finish/index.html.twig',
                 ['page' => $page]
