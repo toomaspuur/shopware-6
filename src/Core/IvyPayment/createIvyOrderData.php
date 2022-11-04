@@ -132,7 +132,7 @@ class createIvyOrderData
                 $ivySessionData->setPrefill($prefill);
                 $activeBillingAddress = $customer->getActiveBillingAddress();
                 if ($activeBillingAddress) {
-                    if (!$activeBillingAddress->getPhoneNumber().is_null()) {
+                    if (!is_null($activeBillingAddress->getPhoneNumber())) {
                         $prefill->setPhone($activeBillingAddress->getPhoneNumber());
                     }
                     $billingAddress = new address();
