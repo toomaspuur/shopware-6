@@ -39,6 +39,7 @@ use Symfony\Component\Serializer\Encoder\XmlEncoder;
 use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 use Symfony\Component\Serializer\Serializer;
 use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
+use WizmoGmbh\IvyPayment\Components\CustomObjectNormalizer;
 use WizmoGmbh\IvyPayment\Core\Checkout\Order\IvyPaymentSessionEntity;
 use WizmoGmbh\IvyPayment\Core\IvyPayment\createIvyOrderData;
 use WizmoGmbh\IvyPayment\Exception\IvyApiException;
@@ -140,7 +141,7 @@ class ExpressService
         $this->ivyPaymentSessionRepository = $ivyPaymentSessionRepository;
         $this->ivyApiClient = $ivyApiClient;
         $encoders = [new XmlEncoder(), new JsonEncoder()];
-        $normalizers = [new ObjectNormalizer()];
+        $normalizers = [new CustomObjectNormalizer()];
         $this->serializer = new Serializer($normalizers, $encoders);
         $this->channelContextSwitcher = $channelContextSwitcher;
         $this->contextService = $contextService;

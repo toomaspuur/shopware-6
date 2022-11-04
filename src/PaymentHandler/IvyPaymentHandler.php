@@ -29,6 +29,7 @@ use Symfony\Component\Serializer\Encoder\XmlEncoder;
 use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 use Symfony\Component\Serializer\Serializer;
 use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
+use WizmoGmbh\IvyPayment\Components\CustomObjectNormalizer;
 use WizmoGmbh\IvyPayment\Core\IvyPayment\createIvyOrderData;
 use WizmoGmbh\IvyPayment\IvyApi\ApiClient;
 use WizmoGmbh\IvyPayment\Logger\IvyLogger;
@@ -205,7 +206,7 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
         $config = $this->configHandler->getFullConfig($salesChannelContext);
 
         $encoders = [new XmlEncoder(), new JsonEncoder()];
-        $normalizers = [new ObjectNormalizer()];
+        $normalizers = [new CustomObjectNormalizer()];
         $serializer = new Serializer($normalizers, $encoders);
 
         $order = $transaction->getOrder();
