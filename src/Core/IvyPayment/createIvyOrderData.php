@@ -12,6 +12,7 @@ namespace WizmoGmbh\IvyPayment\Core\IvyPayment;
 
 use Shopware\Core\Checkout\Cart\Cart;
 use Shopware\Core\Checkout\Cart\Price\Struct\CalculatedPrice;
+use Shopware\Core\Checkout\Customer\CustomerEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderLineItem\OrderLineItemEntity;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Shipping\ShippingMethodEntity;
@@ -24,6 +25,7 @@ use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\SalesChannel\SalesChannelEntity;
 use WizmoGmbh\IvyPayment\IvyApi\address;
 use WizmoGmbh\IvyPayment\IvyApi\lineItem;
+use WizmoGmbh\IvyPayment\IvyApi\prefill;
 use WizmoGmbh\IvyPayment\IvyApi\price;
 use WizmoGmbh\IvyPayment\IvyApi\sessionCreate;
 use WizmoGmbh\IvyPayment\IvyApi\shippingMethod;
@@ -65,7 +67,8 @@ class createIvyOrderData
             ->addShippingMethod($shippingMethod)
             ->setBillingAddress($billingAddress)
             ->setCategory($config['IvyMcc'] ?? '')
-            ->setReferenceId($order->getId());
+            ->setReferenceId($order->getId())
+            ->setHandshake(true);
 
         return $data;
     }
@@ -74,10 +77,17 @@ class createIvyOrderData
      * @param Cart $cart
      * @param SalesChannelContext $context
      * @param array $config
+     * @param bool $isExpress
      * @param bool $skipShipping
      * @return sessionCreate
      */
-    public function getSessionExpressDataFromCart(Cart $cart, SalesChannelContext $context, array $config, bool $skipShipping = false): sessionCreate
+    public function getIvySessionDataFromCart(
+        Cart $cart,
+        SalesChannelContext $context,
+        array $config,
+        bool $isExpress,
+        bool $skipShipping = false
+    ): sessionCreate
     {
         $cartPrice = $cart->getPrice();
         $shippingPrice = $cart->getShippingCosts();
@@ -109,8 +119,35 @@ class createIvyOrderData
         $ivySessionData->setPrice($price)
             ->setLineItems($ivyLineItems)
             ->addShippingMethod($shippingMethod)
-            ->setCategory($config['IvyMcc'] ?? '')
-            ->setExpress(true);
+            ->setCategory($config['IvyMcc'] ?? '');
+        if ($isExpress) {
+            $ivySessionData
+                ->setExpress(true)
+                ->setHandshake(null);
+        } else {
+            /** @var CustomerEntity $customer */
+            $customer = $context->getCustomer();
+            if ($customer) {
+                $prefill = new prefill($customer->getEmail());
+                $ivySessionData->setPrefill($prefill);
+                $activeBillingAddress = $customer->getActiveBillingAddress();
+                if ($activeBillingAddress) {
+                    $prefill->setPhone($activeBillingAddress->getPhoneNumber());
+                    $billingAddress = new address();
+                    $billingAddress
+                        ->setLine1($activeBillingAddress->getStreet())
+                        ->setCity($activeBillingAddress->getCity())
+                        ->setZipCode($activeBillingAddress->getZipCode())
+                        ->setCountry($activeBillingAddress->getCountry()->getIso());
+                    $ivySessionData->setBillingAddress($billingAddress);
+                }
+            }
+
+            $ivySessionData
+                ->setExpress(false)
+                ->setHandshake(true);
+        }
+
         return $ivySessionData;
     }
 

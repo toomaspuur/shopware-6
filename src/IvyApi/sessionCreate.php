@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace WizmoGmbh\IvyPayment\IvyApi;
 
+namespace WizmoGmbh\IvyPayment\IvyApi;
+
 class sessionCreate
 {
     private bool $express;
@@ -33,6 +35,10 @@ class sessionCreate
 
     private string $plugin;
 
+    private ?bool $handshake = false;
+
+    private prefill $prefill;
+
     /**
      * @return bool
      */
@@ -43,10 +49,13 @@ class sessionCreate
 
     /**
      * @param bool $express
+     * @return $this
      */
-    public function setExpress(bool $express): void
+    public function setExpress(bool $express): sessionCreate
     {
         $this->express = $express;
+
+        return $this;
     }
 
 
@@ -176,4 +185,43 @@ class sessionCreate
     {
         return $this->plugin;
     }
+
+    /**
+     * @return prefill
+     */
+    public function getPrefill(): prefill
+    {
+        return $this->prefill;
+    }
+
+    /**
+     * @param prefill $prefill
+     * @return $this
+     */
+    public function setPrefill(prefill $prefill): sessionCreate
+    {
+        $this->prefill = $prefill;
+
+        return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isHandshake(): bool
+    {
+        return (bool)$this->handshake;
+    }
+
+    /**
+     * @param bool|null $handshake
+     * @return void
+     */
+    public function setHandshake(?bool $handshake = null): sessionCreate
+    {
+        $this->handshake = $handshake;
+
+        return $this;
+    }
+
 }

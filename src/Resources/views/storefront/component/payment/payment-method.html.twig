@@ -7,13 +7,10 @@
         <div class="payment-method-description ivy-payment" id="ivy-payment-method"
             {% if payment.id is same as(selectedPaymentMethodId) %}
                 data-ivy-checkout="true"
-                data-checkout-order-url="{{ path('store-api.checkout.cart.order') }}"
-                data-checkout-pay-url="{{ path('store-api.payment.handle') }}"
-                data-checkout-finish-url="{{ path('frontend.checkout.finish.page', {'orderId':'-orderId-'}) }}"
-                data-checkout-error-url="{{ path('frontend.account.edit-order.page', {'orderId':'-orderId-'}) }}"
+                data-action="{{ path('frontend.ivycheckout.start') }}"
              {% endif %}
         >
-            {% if payment.id is same as(selectedPaymentMethodId) %}            
+            {% if payment.id is same as(selectedPaymentMethodId) %}
                 <template data-src="{{ page.IvyButtonUrl }}"></template>
             {% endif %}
             <span class="ivy-pay-logo">

@@ -19,6 +19,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Sorting\FieldSorting;
+use Shopware\Core\Framework\Plugin\PluginEntity;
 use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\Framework\Validation\DataBag\DataBag;
 use Shopware\Core\PlatformRequest;
@@ -86,11 +87,14 @@ class ExpressService
 
     private EntityRepositoryInterface $orderRepository;
 
+    private string $version;
+
 
     /**
      * @param EntityRepositoryInterface $salesChannelRepo
      * @param EntityRepositoryInterface $paymentRepository
      * @param EntityRepositoryInterface $orderRepository
+     * @param EntityRepositoryInterface $pluginRepository
      * @param CartService $cartService
      * @param SystemConfigService $systemConfigService
      * @param ConfigHandler $configHandler
@@ -110,6 +114,7 @@ class ExpressService
         EntityRepositoryInterface $salesChannelRepo,
         EntityRepositoryInterface $paymentRepository,
         EntityRepositoryInterface $orderRepository,
+        EntityRepositoryInterface $pluginRepository,
         CartService $cartService,
         SystemConfigService $systemConfigService,
         ConfigHandler $configHandler,
@@ -145,6 +150,11 @@ class ExpressService
         $this->shippingMethodRoute = $shippingMethodRoute;
         $this->salesChannelProxyController = $salesChannelProxyController;
         $this->orderRepository = $orderRepository;
+        $criteria = new Criteria();
+        $criteria->addFilter(new EqualsFilter('name', 'WizmoGmbhIvyPayment'));
+        /** @var PluginEntity $plugin */
+        $plugin = $pluginRepository->search($criteria, Context::createDefaultContext())->first();
+        $this->version = $plugin->getVersion();
     }
 
     /**
@@ -177,9 +187,11 @@ class ExpressService
 
     /**
      * @param SalesChannelContext $salesChannelContext
-     * @return array
+     * @param $outputData
+     * @return void
+     * @throws Exception
      */
-    public function getAllShippingVariants(SalesChannelContext $salesChannelContext): array
+    public function getAllShippingVariants(SalesChannelContext $salesChannelContext, &$outputData): void
     {
         $this->logger->info('getAllShippingVariants for context token: ' . $salesChannelContext->getToken());
         $criteria = new Criteria([$salesChannelContext->getSalesChannelId()]);
@@ -224,7 +236,21 @@ class ExpressService
             }
         }
         $this->logger->debug('allowed shippings: ' . \print_r($shippingMethods, true));
-        return $shippingMethods;
+        $outputData['shippingMethods'] = $shippingMethods;
+
+        $cart = $this->cartService->getCart($salesChannelContext->getToken(), $salesChannelContext);
+        $config = $this->configHandler->getFullConfig($salesChannelContext);
+        $ivyExpressSessionData = $this->createIvyOrderData->getIvySessionDataFromCart(
+            $cart,
+            $salesChannelContext,
+            $config,
+            true,
+            true
+        );
+        $price = $ivyExpressSessionData->getPrice();
+        $outputData['price']['totalNet'] = $price->getTotalNet();
+        $outputData['price']['vat'] = $price->getVat();
+        $outputData['price']['total'] = $price->getTotal();
     }
 
     /**
@@ -298,15 +324,72 @@ class ExpressService
      * @throws IvyApiException
      * @throws Exception
      */
+    public function createNormalSession(Request $request, SalesChannelContext $salesChannelContext): string
+    {
+        $config = $this->configHandler->getFullConfig($salesChannelContext);
+        $token = $salesChannelContext->getToken();
+        $cart = $this->cartService->getCart($token, $salesChannelContext);
+        $ivySessionData = $this->createIvyOrderData->getIvySessionDataFromCart(
+            $cart,
+            $salesChannelContext,
+            $config,
+            false,
+            false
+        );
+        $referenceId = Uuid::randomHex();
+        $ivySessionData->setReferenceId($referenceId);
+        $contextToken = $request->getSession()->get(PlatformRequest::HEADER_CONTEXT_TOKEN);
+        $ivySessionData->setMetadata([
+            PlatformRequest::HEADER_CONTEXT_TOKEN => $contextToken
+        ]);
+        // add plugin version as string to know whether to redirect to confirmation page after ivy checkout
+        $ivySessionData->setPlugin('sw6-' . $this->version);
+
+        $jsonContent = $this->serializer->serialize($ivySessionData, 'json');
+        $response = $this->ivyApiClient->sendApiRequest('checkout/session/create', $config, $jsonContent);
+
+
+        if (empty($response['redirectUrl'])) {
+            throw new IvyApiException('cannot obtain ivy redirect url');
+        }
+
+        $tempData = [
+            'express' => false,
+            PlatformRequest::HEADER_CONTEXT_TOKEN => $contextToken,
+            'sessionId' => $request->getSession()->getId(),
+        ];
+
+        $this->ivyPaymentSessionRepository->upsert([
+            [
+                'id'              => $referenceId,
+                'status'          => 'initConfirm',
+                'swOrderId'       => null,
+                'ivySessionId'    => $response['id'],
+                'ivyCo2Grams'     => (string)($response['co2Grams'] ?? ''),
+                'expressTempData' => $tempData
+            ],
+        ], $salesChannelContext->getContext());
+
+        return $response['redirectUrl'];
+    }
+
+    /**
+     * @param Request $request
+     * @param SalesChannelContext $salesChannelContext
+     * @return string
+     * @throws IvyApiException
+     * @throws Exception
+     */
     public function createExpressSession(Request $request, SalesChannelContext $salesChannelContext): string
     {
         $config = $this->configHandler->getFullConfig($salesChannelContext);
         $token = $salesChannelContext->getToken();
         $cart = $this->cartService->getCart($token, $salesChannelContext);
-        $ivyExpressSessionData = $this->createIvyOrderData->getSessionExpressDataFromCart(
+        $ivyExpressSessionData = $this->createIvyOrderData->getIvySessionDataFromCart(
             $cart,
             $salesChannelContext,
             $config,
+            true,
             true
         );
 
@@ -318,8 +401,8 @@ class ExpressService
         $ivyExpressSessionData->setMetadata([
             PlatformRequest::HEADER_CONTEXT_TOKEN => $contextToken
         ]);
-        // add plugin version as string to know whether or not to redirect to confirmation page after ivy checkout
-        $ivyExpressSessionData->setPlugin('sw6-1.1.11');
+        // add plugin version as string to know whether to redirect to confirmation page after ivy checkout
+        $ivyExpressSessionData->setPlugin('sw6-' . $this->version);
 
         $jsonContent = $this->serializer->serialize($ivyExpressSessionData, 'json');
         $response = $this->ivyApiClient->sendApiRequest('checkout/session/create', $config, $jsonContent);
@@ -330,6 +413,7 @@ class ExpressService
         }
 
         $tempData = [
+            'express' => true,
             PlatformRequest::HEADER_CONTEXT_TOKEN => $contextToken,
             'sessionId' => $request->getSession()->getId(),
         ];
@@ -735,7 +819,6 @@ class ExpressService
         );
         $cartData = \json_decode((string)$response->getContent(), true);
 
-
         $cartPrice = $cartData['price'];
         $shippingPrice = $cartData['deliveries'][0]['shippingCosts'];
         $shippingVat = $shippingPrice['calculatedTaxes'][0]['tax'];
@@ -892,11 +975,12 @@ class ExpressService
     /**
      * @param string $code
      * @param SalesChannelContext $salesChannelContext
-     * @return array
+     * @param $outputData
+     * @return void
      * @throws Exception
      * @throws IvyException
      */
-    public function addPromotion(string $code, SalesChannelContext $salesChannelContext): array
+    public function addPromotion(string $code, SalesChannelContext $salesChannelContext, &$outputData): void
     {
         if ($code === '') {
             throw new IvyException('Discount code is required');
@@ -912,19 +996,25 @@ class ExpressService
         $lineItem = $cart->getLineItems()->last();
 
         $config = $this->configHandler->getFullConfig($salesChannelContext);
-        $ivyExpressSessionData = $this->createIvyOrderData->getSessionExpressDataFromCart(
+        $ivyExpressSessionData = $this->createIvyOrderData->getIvySessionDataFromCart(
             $cart,
             $salesChannelContext,
-            $config
+            $config,
+            true,
+            true
         );
 
         if ($lineItem && ($discountPrice = $lineItem->getPrice()) !== null) {
-            return [
+            $outputData['discount'] = [
                 'amount' => -$discountPrice->getTotalPrice(),
-                'price' => $ivyExpressSessionData->getPrice()
             ];
+        } else {
+            $outputData['discount'] = [];
         }
-        return [];
+        $price = $ivyExpressSessionData->getPrice();
+        $outputData['price']['totalNet'] = $price->getTotalNet();
+        $outputData['price']['vat'] = $price->getVat();
+        $outputData['price']['total'] = $price->getTotal();
     }
 
     /**
