@@ -196,6 +196,7 @@ class sessionCreate
 
     /**
      * @param prefill $prefill
+     * @return $this
      */
     public function setPrefill(prefill $prefill): sessionCreate
     {
@@ -209,7 +210,7 @@ class sessionCreate
      */
     public function isHandshake(): bool
     {
-        return $this->handshake;
+        return (bool)$this->handshake;
     }
 
     /**
