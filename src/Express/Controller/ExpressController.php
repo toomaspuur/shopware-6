@@ -199,8 +199,8 @@ class ExpressController extends StorefrontController
                         );
                         $this->logger->info('save new context token');
                         $tempData[PlatformRequest::HEADER_CONTEXT_TOKEN] = $contextToken;
-                        $ivyPaymentSession->setExpressTempData($tempData);
                     }
+                    $ivyPaymentSession->setExpressTempData($tempData);
                 } catch (\Exception $e) {
                     $errorStatus = $this->handleException($e);
                 }
@@ -330,8 +330,8 @@ class ExpressController extends StorefrontController
                 $this->expressService->validateConfirmPayload($payload, $contextToken, $salesChannelContext);
 
                 if ($isExpress) {
-                    $payload['shopperEmail'] = $tempData['shopperEmail'];
-                    $payload['shopperPhone'] = $tempData['shopperPhone'];
+                    $payload['shopperEmail'] = $tempData['shopperEmail'] ?? '';
+                    $payload['shopperPhone'] = $tempData['shopperPhone'] ?? '';
                     $this->logger->debug('shopperEmail: ' . $payload['shopperEmail']);
                     $this->logger->debug('shopperPhone: ' . $payload['shopperPhone']);
                 }
