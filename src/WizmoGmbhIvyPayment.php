@@ -107,7 +107,7 @@ class WizmoGmbhIvyPayment extends Plugin
             // payment handler will be selected by the identifier
             'handlerIdentifier' => IvyPaymentHandler::class,
             'name' => 'IvyPayment',
-            'description' => 'Ivy - Climate Neutral Shopping',
+            'description' => 'Ivy - Payments with Impact',
             'pluginId' => $pluginId,
         ];
 
