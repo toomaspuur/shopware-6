@@ -193,11 +193,11 @@ class IvyPaymentController extends StorefrontController
 
                 if($type == 'order_created' && $payload['status'] != 'canceled') {
                     $ivyPaymentSession = $this->expressService->getIvySessionByReference((string)$payload['referenceId']);
-                    
+
                     if($ivyPaymentSession) {
                         $swOrderId = $ivyPaymentSession->getSwOrderId();
                         $swOrder = $this->expressService->getExpressOrder($swOrderId, $salesChannelContext);
-    
+
                         $config = $this->configHandler->getFullConfig($salesChannelContext);
                         $jsonContent = \json_encode([
                             'id' => $payload['id'],

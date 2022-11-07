@@ -12,13 +12,6 @@
             <argument>%shopware.logger.file_rotation_count%</argument>
         </service>
 
-
-        <service id="hcou.ivypayment.logger.express_logger" class="WizmoGmbh\IvyPayment\Logger\IvyLogger">
-            <factory service="wizmo_gmbh.ivy_payment.logger.ivy_logger_factory" method="createRotating"/>
-            <argument type="string">ivypayment/express</argument>
-            <argument type="string">30</argument>
-        </service>
-
         <service id="hcou.ivypayment.logger.api_logger" class="WizmoGmbh\IvyPayment\Logger\IvyLogger">
             <factory service="wizmo_gmbh.ivy_payment.logger.ivy_logger_factory" method="createRotating"/>
             <argument type="string">ivypayment/api</argument>
