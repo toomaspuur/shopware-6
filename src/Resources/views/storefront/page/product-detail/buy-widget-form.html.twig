@@ -31,6 +31,7 @@
         {% set ivyPrice = ivyPrice / (100+taxrate) *100  %}
     {% endif %}
 
+    {% if config('WizmoGmbhIvyPayment.config.showDetailBtn') %}
         <div class="ivy--express-checkout-btn"
                 data-action="{{ path('frontend.ivyexpress.start') }}"
                 data-add-to-ivycart="true">
@@ -41,8 +42,10 @@
                 data-shop-category="{{ page.IvyMcc}}"
                 data-locale="{{ 'ivypaymentplugin.ivy-modal.ivyLocale'|trans|sw_sanitize }}"
                 data-currency-code="{{ context.currency.isoCode }}"
+                data-theme = "{% if config('WizmoGmbhIvyPayment.config.darkThemeDetail') %}dark{% else %}light{% endif %}"
             ></div>
             <template data-src="{{ page.IvyButtonUrl }}"></template>
         </div>
+    {% endif %}
     </div>
 {% endblock %}
