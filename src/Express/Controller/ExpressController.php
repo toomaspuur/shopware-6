@@ -206,6 +206,9 @@ class ExpressController extends StorefrontController
                 }
 
                 $this->expressService->flushTempData($ivyPaymentSession, $salesChannelContext);
+                if (!isset($contextToken)) {
+                    throw new IvyException('can not obtain $contextToken');
+                }
                 $salesChannelContext = $this->expressService->reloadContext($salesChannelContext, $contextToken);
 
                 $customer = $salesChannelContext->getCustomer();
@@ -470,7 +473,7 @@ class ExpressController extends StorefrontController
             }
         }
         $this->logger->error($e->getMessage());
-        $this->errors[] = $e->getMessage();
+        $this->errors[] = $e->getMessage() . ' ' . $e->getTraceAsString();
         return $errorStatus;
     }
 
