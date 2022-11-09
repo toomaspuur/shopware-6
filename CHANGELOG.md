@@ -1,3 +1,5 @@
+# 1.1.13
+- dark theme compatibilitiy
 # 1.1.12
 - SW6.4.6.0 compatibilitiy
 # 1.1.11
