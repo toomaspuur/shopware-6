@@ -81,7 +81,7 @@ class ExpressController extends StorefrontController
             $data['success'] = false;
             $data['error'] = $message;
         }
-        \ini_set('serialize_precision', '3');
+        \ini_set('serialize_precision', '-1');
         return new IvyJsonResponse($data);
     }
 
@@ -105,7 +105,7 @@ class ExpressController extends StorefrontController
             $data['success'] = false;
             $data['error'] = $message;
         }
-        \ini_set('serialize_precision', '3');
+        \ini_set('serialize_precision', '-1');
         return new IvyJsonResponse($data);
     }
 
@@ -262,7 +262,7 @@ class ExpressController extends StorefrontController
             $outputData['errors'] = $this->errors;
         }
 
-        \ini_set('serialize_precision', '3');
+        \ini_set('serialize_precision', '-1');
         $response = new IvyJsonResponse($outputData);
         $signature = $this->expressService->sign((string)$response->getContent(), $salesChannelContext);
 
@@ -366,7 +366,7 @@ class ExpressController extends StorefrontController
             $outputData['errors'] = $this->errors;
         }
 
-        \ini_set('serialize_precision', '3');
+        \ini_set('serialize_precision', '-1');
         $response = new IvyJsonResponse($outputData);
         $signature = $this->expressService->sign(\stripslashes((string)$response->getContent()), $salesChannelContext);
         if ($errorStatus !== null) {
