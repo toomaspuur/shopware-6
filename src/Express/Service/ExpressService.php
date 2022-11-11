@@ -239,6 +239,7 @@ class ExpressService
         $this->logger->debug('allowed shippings: ' . \print_r($shippingMethods, true));
         $outputData['shippingMethods'] = $shippingMethods;
 
+        /* TEMP
         $cart = $this->cartService->getCart($salesChannelContext->getToken(), $salesChannelContext);
         $config = $this->configHandler->getFullConfig($salesChannelContext);
         $ivyExpressSessionData = $this->createIvyOrderData->getIvySessionDataFromCart(
@@ -252,6 +253,7 @@ class ExpressService
         $outputData['price']['totalNet'] = $price->getTotalNet();
         $outputData['price']['vat'] = $price->getVat();
         $outputData['price']['total'] = $price->getTotal();
+        */
     }
 
     /**
@@ -821,16 +823,20 @@ class ExpressService
         $cartData = \json_decode((string)$response->getContent(), true);
 
         $cartPrice = $cartData['price'];
+
+        /* TEMP
         $shippingPrice = $cartData['deliveries'][0]['shippingCosts'];
         $shippingVat = $shippingPrice['calculatedTaxes'][0]['tax'];
         $shippingTotal = $shippingPrice['totalPrice'];
-        $shippingNet = $shippingTotal - $shippingVat;
+        */
+        
+        // TEMP $shippingNet = $shippingTotal - $shippingVat;
 
-        $totalNet = $cartPrice['netPrice'] - $shippingNet;
+        // TEMP $totalNet = $cartPrice['netPrice'] - $shippingNet;
 
         $total = $cartPrice['totalPrice'];
 
-        $vat = $cartPrice['calculatedTaxes'][0]['tax'] - $shippingVat;
+        // TEMP $vat = $cartPrice['calculatedTaxes'][0]['tax'] - $shippingVat;
 
         $violations = [];
         $accuracy = 0.0001;
@@ -838,6 +844,8 @@ class ExpressService
         if (\abs($total - $payload['price']['total']) > $accuracy) {
             $violations[] = '$payload["price"]["total"] is ' . $payload['price']['total'] . ' waited ' . $total;
         }
+
+        /* TEMP
         if (\abs($totalNet - $payload['price']['totalNet']) > $accuracy) {
             $violations[] = '$payload["price"]["totalNet"] is ' . $payload['price']['totalNet'] . ' waited ' . $totalNet;
         }
@@ -847,6 +855,8 @@ class ExpressService
         if (\abs($shippingTotal - $payload['price']['shipping']) > $accuracy) {
             $violations[] = '$payload["price"]["shipping"] is ' . $payload['price']['shipping'] . ' waited ' . $shippingTotal;
         }
+        */
+
         if ($salesChannelContext->getCurrency()->getIsoCode() !== $payload['price']['currency']) {
             $violations[] = '$payload["price"]["currency"] is ' . $payload['price']['currency'] . ' waited ' . $salesChannelContext->getCurrency()->getIsoCode();
         }
@@ -855,8 +865,12 @@ class ExpressService
         if (empty($payloadLineItems) || !\is_array($payloadLineItems)) {
             $violations[] = 'checkout confirm with empty line items';
         }
+
+        /*
         foreach ($payloadLineItems as $key => $payloadLineItem) {
             /** @var lineItem $lineItem */
+
+            /*
             $lineItem = $cartData['lineItems'][$key];
             if ($lineItem['label'] !== $payloadLineItem['name']) {
                 $violations[] = '$payloadLineItem["name"] is ' . $payloadLineItem["name"] . ' waited ' . $lineItem['label'];
@@ -879,7 +893,8 @@ class ExpressService
             $singleVat = $vat;
             $quantity = $lineItem['quantity'];
             $amount = ($singleNet + $singleVat) * $quantity;
-
+            
+            
             if (\abs($singleNet - $payloadLineItem['singleNet']) > $accuracy) {
                 $violations[] = '$payloadLineItem["singleNet"] is ' . $payloadLineItem["singleNet"] . ' waited ' . $singleNet;
             }
@@ -889,10 +904,13 @@ class ExpressService
             if (\abs($amount - $payloadLineItem['amount']) > $accuracy) {
                 $violations[] = '$payloadLineItem["amount"] is ' . $payloadLineItem["amount"] . ' waited ' . $amount;
             }
+            
             if ((int)$quantity !== (int)$payloadLineItem['quantity']) {
                 $violations[] = '$payloadLineItem["quantity"] is ' . $payloadLineItem["quantity"] . ' waited ' . $quantity;
             }
         }
+        */
+
         if (!empty($violations)) {
             throw new IvyException(\print_r($violations, true));
         }

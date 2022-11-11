@@ -107,12 +107,6 @@
     <card>
         <title>Theme</title>
         <title lang="de-DE">Theme</title>
-        <input-field type="bool">
-            <name>showDetailBtn</name>
-            <label>Show button on product detail page</label>
-            <label lang="de-DE">Button auf Produktdetailseite einblenden</label>
-            <defaultValue>true</defaultValue>
-        </input-field>
 
         <input-field type="bool">
             <name>darkThemeDetail</name>
@@ -142,7 +136,13 @@
             <defaultValue>true</defaultValue>
         </input-field>
 
+        <input-field type="bool">
+            <name>showDetailBtn</name>
+            <label>Show button on product detail page</label>
+            <label lang="de-DE">Button auf Produktdetailseite einblenden</label>
+            <defaultValue>true</defaultValue>
+        </input-field>
+
     </card>
 
 </config>
-

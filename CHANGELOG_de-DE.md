@@ -1,3 +1,7 @@
+# 1.1.13
+- Dunkles Theme Kompatibilität
+# 1.1.12
+- SW6.4.6.0 Kompatibilität
 # 1.1.11
 - Checkout Banner erscheint immer
 # 1.1.10
