@@ -147,7 +147,14 @@ class ConfigHandler
         }
 
         $this->config[$salesChannelId]['IvyMcc'] = self::MCC_DEFAULT;
-        $this->config[$salesChannelId]['defaultSalutation'] = $this->connection->fetchOne("SELECT LOWER(HEX(s.id)) FROM salutation s WHERE s.salutation_key = 'not_specified'");
+        $notSpecifySalutationId = $this->connection
+            ->fetchOne("SELECT LOWER(HEX(s.id)) FROM salutation s WHERE s.salutation_key = 'not_specified'");
+        if (!$notSpecifySalutationId) {
+            $notSpecifySalutationId = $this->connection
+                ->fetchOne("SELECT LOWER(HEX(s.id)) FROM salutation s LIMIT 1");
+        }
+
+        $this->config[$salesChannelId]['defaultSalutation'] = $notSpecifySalutationId;
         return $this->config[$salesChannelId];
     }
 
