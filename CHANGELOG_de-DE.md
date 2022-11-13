@@ -1,3 +1,5 @@
+# 1.1.14
+- Anrede Fehler ist gefixt
 # 1.1.13
 - Dunkles Theme Kompatibilität
 # 1.1.12

@@ -1,3 +1,5 @@
+# 1.1.14
+- salutation error is fixed
 # 1.1.13
 - dark theme compatibilitiy
 # 1.1.12
