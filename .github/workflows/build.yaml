@@ -1,0 +1,27 @@
+name: build
+
+on:
+  push:
+    branches: [main]    
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Go
+      uses: actions/setup-go@v3    
+
+    - name: Install shopware-cli
+      run: go install github.com/FriendsOfShopware/shopware-cli@latest
+
+    #- name: Build extension
+    #  run: shopware-cli extension build .
+    - name: Zip extension
+      run: shopware-cli extension zip .
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: WizmoGmbhIvyPayment*.zip     
