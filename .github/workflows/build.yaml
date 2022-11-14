@@ -18,7 +18,6 @@ jobs:
             --rm \
             -v ${pwd}:${pwd} \
             -w ${pwd} \
-            -u ${id -u} \
             ghcr.io/friendsofshopware/shopware-cli \
             extension zip .
     - name: Release
