@@ -11,18 +11,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Go
-      uses: actions/setup-go@v3    
-      with:
-        go-version: 1.19
-
-    - name: Install shopware-cli
-      run: go install github.com/FriendsOfShopware/shopware-cli@0.1.43
-
     #- name: Build extension
     #  run: shopware-cli extension build .
     - name: Zip extension
-      run: shopware-cli extension zip .
+      run: docker run \
+            --rm \
+            -v $(pwd):$(pwd) \
+            -w $(pwd) \
+            -u $(id -u) \
+            ghcr.io/friendsofshopware/shopware-cli \
+            extension zip .
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
