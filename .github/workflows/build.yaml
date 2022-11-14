@@ -14,7 +14,7 @@ jobs:
     #- name: Build extension
     #  run: shopware-cli extension build .
     - name: Zip extension
-      run: docker run --rm ghcr.io/friendsofshopware/shopware-cli extension zip .
+      run: docker run --rm -v $(pwd):$(pwd) -w $(pwd) ghcr.io/friendsofshopware/shopware-cli extension zip .
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
