@@ -16,9 +16,9 @@ jobs:
     - name: Zip extension
       run: docker run \
             --rm \
-            -v $(pwd):$(pwd) \
-            -w $(pwd) \
-            -u $(id -u) \
+            -v ${pwd}:${pwd} \
+            -w ${pwd} \
+            -u ${id -u} \
             ghcr.io/friendsofshopware/shopware-cli \
             extension zip .
     - name: Release
