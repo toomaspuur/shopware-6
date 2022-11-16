@@ -1,3 +1,5 @@
+# 1.1.15
+- Kleine Anpassungen 
 # 1.1.14
 - Anrede Fehler ist gefixt
 # 1.1.13

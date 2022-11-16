@@ -1,3 +1,5 @@
+ #1.1.15
+- small frontend adaptions in the payment step
 # 1.1.14
 - salutation error is fixed
 # 1.1.13
