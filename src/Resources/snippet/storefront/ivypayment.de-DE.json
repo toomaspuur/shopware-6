@@ -4,7 +4,8 @@
             "ivyLocale": "de"
         },
         "checkout": {
-            "title": "Bezahle mit deiner Bank"
+            "title": "Bezahle mit deiner Bank",
+            "paymentMethodText": "Ivy - Kostenlos Bäume pflanzen"
         },
         "express": {
             "session": {

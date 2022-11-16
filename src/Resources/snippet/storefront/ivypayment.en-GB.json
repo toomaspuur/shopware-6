@@ -4,7 +4,8 @@
             "ivyLocale": "en"
         },
         "checkout": {
-            "title": "Pay by bank"
+            "title": "Pay by bank",
+            "paymentMethodText": "Ivy - Plant trees at no extra cost"
         }
     }
 }
