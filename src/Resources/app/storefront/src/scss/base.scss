@@ -26,3 +26,13 @@
         height: unset;
     }
 }
+
+.payment-method-description.ivy-payment {
+    width: 100%;
+    .ivy-pay-text {
+        font-weight: bold;
+    }
+    .ivy-pay-logo {
+        float: right;
+    }
+}
