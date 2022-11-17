@@ -1,5 +1,9 @@
- #1.1.15
+# 1.1.17
 - small frontend adaptions in the payment step
+# 1.1.16
+- internal deployment improvements
+# 1.1.15
+- internal workflow improvements
 # 1.1.14
 - salutation error is fixed
 # 1.1.13
