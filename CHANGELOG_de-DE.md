@@ -1,3 +1,5 @@
+# 1.1.18
+- Fixes bei Discounts
 # 1.1.17
 - Kleine Anpassungen in der Checkout Darstellung
 # 1.1.16
