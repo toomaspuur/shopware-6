@@ -1,3 +1,11 @@
+# 1.1.17
+- Kleine Anpassungen in der Checkout Darstellung
+# 1.1.16
+- Interne Deployment Verbesserungen
+# 1.1.15
+- Interne Workflow Verbesserungen
+# 1.1.14
+- Anrede Fehler ist gefixt
 # 1.1.13
 - Dunkles Theme Kompatibilität
 # 1.1.12

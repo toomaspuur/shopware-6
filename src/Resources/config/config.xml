@@ -110,30 +110,30 @@
 
         <input-field type="bool">
             <name>darkThemeDetail</name>
-            <label>Theme light or dark on the product detail page</label>
-            <label lang="de-DE">Theme hell oder dunkel auf der Produktdetailseite</label>
-            <defaultValue>true</defaultValue>
+            <label>Dark theme on the product detail page</label>
+            <label lang="de-DE">Dunkles Theme auf der Produktdetailseite</label>
+            <defaultValue>false</defaultValue>
         </input-field>
 
         <input-field type="bool">
             <name>darkThemeOffCanva</name>
-            <label>Theme light or dark in mini shopping cart</label>
-            <label lang="de-DE">Theme hell oder dunkel im Miniwarenkorb</label>
-            <defaultValue>true</defaultValue>
+            <label>Dark theme in mini shopping cart</label>
+            <label lang="de-DE">Dunkles Theme im Miniwarenkorb</label>
+            <defaultValue>false</defaultValue>
         </input-field>
 
         <input-field type="bool">
             <name>darkThemeCart</name>
-            <label>Theme light or dark in shopping cart</label>
-            <label lang="de-DE">Theme hell oder dunkel im Warenkorb</label>
-            <defaultValue>true</defaultValue>
+            <label>Dark theme in shopping cart</label>
+            <label lang="de-DE">Dunkles Theme im Warenkorb</label>
+            <defaultValue>false</defaultValue>
         </input-field>
 
         <input-field type="bool">
             <name>darkThemeRegister</name>
-            <label>Theme light or dark on the registration page</label>
-            <label lang="de-DE">Theme hell oder dunkel auf der Registrierungsseite</label>
-            <defaultValue>true</defaultValue>
+            <label>Dark theme on the registration page</label>
+            <label lang="de-DE">Dunkles Theme auf der Registrierungsseite</label>
+            <defaultValue>false</defaultValue>
         </input-field>
 
         <input-field type="bool">
