@@ -1,3 +1,5 @@
+# 1.1.18
+- Fixes for discounts function
 # 1.1.17
 - small frontend adaptions in the payment step
 # 1.1.16
