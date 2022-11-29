@@ -5,6 +5,7 @@ namespace WizmoGmbh\IvyPayment\Express\Service;
 use Doctrine\DBAL\Exception;
 use Monolog\Logger;
 use Shopware\Core\Checkout\Cart\Exception\OrderNotFoundException;
+use Shopware\Core\Checkout\Cart\LineItem\LineItem;
 use Shopware\Core\Checkout\Cart\SalesChannel\CartService;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Order\SalesChannel\AbstractOrderRoute;
@@ -36,7 +37,6 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Serializer\Encoder\XmlEncoder;
-use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 use Symfony\Component\Serializer\Serializer;
 use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
 use WizmoGmbh\IvyPayment\Components\CustomObjectNormalizer;
@@ -45,7 +45,6 @@ use WizmoGmbh\IvyPayment\Core\IvyPayment\createIvyOrderData;
 use WizmoGmbh\IvyPayment\Exception\IvyApiException;
 use WizmoGmbh\IvyPayment\Exception\IvyException;
 use WizmoGmbh\IvyPayment\IvyApi\ApiClient;
-use WizmoGmbh\IvyPayment\IvyApi\lineItem;
 use WizmoGmbh\IvyPayment\PaymentHandler\IvyPaymentHandler;
 
 class ExpressService
@@ -1026,13 +1025,30 @@ class ExpressService
         }
         $cart = $this->cartService->getCart($salesChannelContext->getToken(), $salesChannelContext);
         try {
+            // 1. here discount line item has no price yet
             $lineItem = $this->promotionItemBuilder->buildPlaceholderItem($code);
             $cart = $this->cartService->add($cart, $lineItem, $salesChannelContext);
         } catch (\Exception $e) {
             throw new IvyException('Can not add discout: ' . $e->getMessage());
         }
 
-        $lineItem = $cart->getLineItems()->last();
+        // 2. we need load validated and recalculated line item from cart, to obtain correct amount
+        $loadedLineItem = null;
+        /** @var LineItem $currentItem */
+        foreach ($cart->getLineItems() as $currentItem) {
+            if ($currentItem->isGood() ===  true) {
+                continue;
+            }
+            if ($currentItem->getPayloadValue('code') === $code) {
+                $loadedLineItem = $currentItem;
+                break;
+            }
+        }
+
+        if ($loadedLineItem === null) {
+            // 3. discout was removed from cart by one cart-processor
+            $this->logger->error('discount lineitem with code ' . $code . ' not found in cart');
+        }
 
         $config = $this->configHandler->getFullConfig($salesChannelContext);
         $ivyExpressSessionData = $this->createIvyOrderData->getIvySessionDataFromCart(
@@ -1043,7 +1059,9 @@ class ExpressService
             true
         );
 
-        if ($lineItem && ($discountPrice = $lineItem->getPrice()) !== null) {
+
+        if ($loadedLineItem && ($discountPrice = $loadedLineItem->getPrice()) !== null) {
+            // 4. discout was successful added to cart
             $outputData['discount'] = [
                 'amount' => -$discountPrice->getTotalPrice(),
             ];
