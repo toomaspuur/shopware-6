@@ -1,3 +1,5 @@
+# 1.1.19
+- Fixes for discounts function
 # 1.1.18
 - Fixes for discounts function
 # 1.1.17

@@ -1,3 +1,5 @@
+# 1.1.19
+- Fixes bei Discounts
 # 1.1.18
 - Fixes bei Discounts
 # 1.1.17
