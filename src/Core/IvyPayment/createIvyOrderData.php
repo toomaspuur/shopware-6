@@ -137,7 +137,9 @@ class createIvyOrderData
                         ->setLine1($activeBillingAddress->getStreet())
                         ->setCity($activeBillingAddress->getCity())
                         ->setZipCode($activeBillingAddress->getZipCode())
-                        ->setCountry($activeBillingAddress->getCountry()->getIso());
+                        ->setCountry($activeBillingAddress->getCountry()->getIso())
+                        ->setFirstName($activeBillingAddress->getFirstName())
+                        ->setLastName($activeBillingAddress->getLastName());
                     $ivySessionData->setBillingAddress($billingAddress);
                 }
             }
