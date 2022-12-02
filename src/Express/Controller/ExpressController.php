@@ -355,6 +355,7 @@ class ExpressController extends StorefrontController
                 );
                 $outputData = [
                     'redirectUrl' => $finishUrl,
+                    'displayId' => $orderData['orderNumber'],
                     'metadata' => [
                         '_sw_payment_token' => $orderData['_sw_payment_token'],
                     ]
