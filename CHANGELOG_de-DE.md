@@ -1,3 +1,5 @@
+# 1.1.20
+- Angezeigt Shopware ID wird nun in den Bestätigunsmails gezeigt
 # 1.1.19
 - Fixes bei Discounts
 # 1.1.18
