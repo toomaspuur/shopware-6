@@ -1,3 +1,5 @@
+# 1.1.21
+- Logging improved
 # 1.1.20
 - Add displayed shopware id to confirmation mail
 # 1.1.19
