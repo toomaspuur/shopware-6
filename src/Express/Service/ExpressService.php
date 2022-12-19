@@ -699,6 +699,7 @@ class ExpressService
      * @param string $contextToken
      * @param SalesChannelContext $salesChannelContext
      * @return array
+     * @throws IvyException
      */
     public function checkoutConfirm(
         IvyPaymentSessionEntity $ivyPaymentSession,
@@ -717,9 +718,22 @@ class ExpressService
             $request,
             $salesChannelContext->getContext()
         );
-        $orderData = \json_decode((string)$response->getContent(), true);
 
-        $this->logger->info('created order ' . $orderData['orderNumber'] . ' (' . $orderData['id'] . ')');
+        $responseContent = (string)$response->getContent();
+        $created = false;
+        if (!empty($responseContent)) {
+            $orderData = \json_decode($responseContent, true);
+            if (\is_array($orderData) && !empty($orderData['id'])) {
+                $created = true;
+                $this->logger->info('created order ' . $orderData['orderNumber'] . ' (' . $orderData['id'] . ')');
+            } else {
+                $this->logger->error($responseContent);
+            }
+        }
+
+        if (!$created) {
+            throw new IvyException('order can not be created');
+        }
 
         $tempData = $ivyPaymentSession->getExpressTempData();
         unset($tempData['cookies']);

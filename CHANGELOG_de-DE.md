@@ -1,3 +1,5 @@
+# 1.1.21
+- Logging improved
 # 1.1.20
 - Angezeigt Shopware ID wird nun in den Bestätigunsmails gezeigt
 # 1.1.19
