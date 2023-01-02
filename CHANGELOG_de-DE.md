@@ -1,3 +1,5 @@
+# 1.1.22
+- Bug Fixes
 # 1.1.21
 - Logging improved
 # 1.1.20
