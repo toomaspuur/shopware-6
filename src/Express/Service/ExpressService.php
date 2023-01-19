@@ -404,6 +404,12 @@ class ExpressService
         $config = $this->configHandler->getFullConfig($salesChannelContext);
         $token = $salesChannelContext->getToken();
         $cart = $this->cartService->getCart($token, $salesChannelContext);
+
+        $shippingMethodId = $cart->getShippingMethodId();
+        if ($shippingMethodId !== null) {
+            $this->cartService->removeShippingMethod($token, $salesChannelContext);
+        }
+
         $ivyExpressSessionData = $this->createIvyOrderData->getIvySessionDataFromCart(
             $cart,
             $salesChannelContext,
@@ -413,7 +419,7 @@ class ExpressService
         );
 
         // remove preselected shipping
-        $ivyExpressSessionData->getPrice()->setShipping(0);
+        $ivyExpressSessionData->getPrice();
         $referenceId = Uuid::randomHex();
         $ivyExpressSessionData->setReferenceId($referenceId);
         $contextToken = $request->getSession()->get(PlatformRequest::HEADER_CONTEXT_TOKEN);

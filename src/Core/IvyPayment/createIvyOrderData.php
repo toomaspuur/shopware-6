@@ -90,36 +90,33 @@ class createIvyOrderData
     ): sessionCreate
     {
         $cartPrice = $cart->getPrice();
-        $shippingPrice = $cart->getShippingCosts();
-        $shippingVat = $shippingPrice->getCalculatedTaxes()->first()->getTax();
-        $shippingTotal = $shippingPrice->getTotalPrice();
-        $shippingNet = $shippingTotal - $shippingVat;
 
-        $totalNet = $cartPrice->getNetPrice() - $shippingNet;
+        $shippingTotal = $cart->getShippingCosts()->getTotalPrice();
+
+        $totalNet = $cartPrice->getNetPrice();
 
         $total = $cartPrice->getTotalPrice();
 
-        $vat = $cartPrice->getCalculatedTaxes()->first()->getTax() - $shippingVat;
+        $vat = $cartPrice->getCalculatedTaxes()->first()->getTax();
 
-        if ($skipShipping) {
-            $total -= $shippingTotal;
-            $shippingTotal = 0;
-        }
+        $subTotal = $cartPrice->getPositionPrice();
 
         $price = new price();
-        $price->setTotalNet($totalNet)
+        $price
+            ->setTotalNet($totalNet)
             ->setVat($vat)
             ->setTotal($total)
             ->setShipping($shippingTotal)
-            ->setCurrency($context->getCurrency()->getIsoCode());
+            ->setCurrency($context->getCurrency()->getIsoCode())
+            ->setSubTotal($subTotal);
 
         $ivyLineItems = $this->getLineItemFromCart($cart);
         $shippingMethod = $this->getShippingMethodFromCart($cart, $context);
         $ivySessionData = new sessionCreate();
-        $ivySessionData->setPrice($price)
+        $ivySessionData
+            ->setPrice($price)
             ->setLineItems($ivyLineItems)
-            ->addShippingMethod($shippingMethod)
-            ->setCategory($config['IvyMcc'] ?? '');
+            ->addShippingMethod($shippingMethod);
         if ($isExpress) {
             $ivySessionData
                 ->setExpress(true)
@@ -176,7 +173,8 @@ class createIvyOrderData
                 $vat = 0.0;
             }
 
-            $lineItem->setName($swLineItem->getLabel())
+            $lineItem
+                ->setName($swLineItem->getLabel())
                 ->setReferenceId($swLineItem->getReferencedId())
                 ->setSingleNet($netUnitPrice)
                 ->setSingleVat($vat)
