@@ -419,7 +419,6 @@ class ExpressService
         );
 
         // remove preselected shipping
-        $ivyExpressSessionData->getPrice();
         $referenceId = Uuid::randomHex();
         $ivyExpressSessionData->setReferenceId($referenceId);
         $contextToken = $request->getSession()->get(PlatformRequest::HEADER_CONTEXT_TOKEN);
