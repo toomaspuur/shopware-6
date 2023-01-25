@@ -90,26 +90,32 @@ class createIvyOrderData
     ): sessionCreate
     {
         $cartPrice = $cart->getPrice();
+        $shippingCosts = $cart->getShippingCosts();
 
-        $taxes = $cart->getShippingCosts()->getCalculatedTaxes()->first();
-        if ($taxes !== null) {
-            $shippingTotal = $cart->getShippingCosts()->getTotalPrice() ?? 0;
-            $shippingVat = $cart->getShippingCosts()->getCalculatedTaxes()->first()->getTax() ?? 0;
-        } else {
+        try {
+            $shippingTotal = $shippingCosts->getTotalPrice() ?? 0;
+            $shippingVat = $shippingCosts->getCalculatedTaxes()->first()->getTax() ?? 0;
+        } catch (\Exception $e) {
             $shippingTotal = 0;
             $shippingVat = 0;
         }
 
+        $shippingNet = $shippingTotal - $shippingVat;
         $subTotal = $cartPrice->getPositionPrice() ?? 0;
+
+        if ($cartPrice->hasNetPrices()) {
+            $totalNet = $cartPrice->getNetPrice() ?? 0;
+        } else {
+            $totalNet = $cartPrice->getTotalPrice() ?? 0;
+        }
 
         if ($isExpress) {
             $total = $cartPrice->getTotalPrice() - $shippingTotal;
             $vat = $cartPrice->getCalculatedTaxes()->first()->getTax() - $shippingVat;
-            $totalNet = $cartPrice->getPositionPrice()->getNetPrice();
+            $totalNet = $totalNet - $shippingNet;
         } else {
             $total = $cartPrice->getTotalPrice();
             $vat = $cartPrice->getCalculatedTaxes()->first()->getTax();
-            $totalNet = $cartPrice()->getNetPrice();
         }
 
         $price = new price();
