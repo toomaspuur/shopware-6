@@ -128,8 +128,7 @@ class createIvyOrderData
         if ($isExpress) {
             $ivySessionData
                 ->setExpress(true)
-                ->setHandshake(null)
-                ->setShippingMethod(null);
+                ->setHandshake(null);
         } else {
             /** @var CustomerEntity $customer */
             $customer = $context->getCustomer();
