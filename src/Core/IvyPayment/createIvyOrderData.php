@@ -91,7 +91,7 @@ class createIvyOrderData
     {
         $cartPrice = $cart->getPrice();
 
-        $shippingTotal = $cart->getShippingCosts()->getTotalPrice();
+        $shippingTotal = $cart->getShippingCosts()->getTotalPrice() ?? 0;
 
         $totalNet = $cartPrice->getNetPrice();
 
@@ -102,6 +102,7 @@ class createIvyOrderData
         $subTotal = $cartPrice->getPositionPrice();
 
         $price = new price();
+
         $price
             ->setTotalNet($totalNet)
             ->setVat($vat)
@@ -111,12 +112,13 @@ class createIvyOrderData
             ->setSubTotal($subTotal);
 
         $ivyLineItems = $this->getLineItemFromCart($cart);
-        $shippingMethod = $this->getShippingMethodFromCart($cart, $context);
+
         $ivySessionData = new sessionCreate();
+
         $ivySessionData
             ->setPrice($price)
-            ->setLineItems($ivyLineItems)
-            ->addShippingMethod($shippingMethod);
+            ->setLineItems($ivyLineItems);
+
         if ($isExpress) {
             $ivySessionData
                 ->setExpress(true)
@@ -124,6 +126,7 @@ class createIvyOrderData
         } else {
             /** @var CustomerEntity $customer */
             $customer = $context->getCustomer();
+
             if ($customer) {
                 $prefill = new prefill($customer->getEmail());
                 $ivySessionData->setPrefill($prefill);
@@ -141,9 +144,12 @@ class createIvyOrderData
                 }
             }
 
+            $shippingMethod = $this->getShippingMethodFromCart($cart, $context);
+
             $ivySessionData
                 ->setExpress(false)
-                ->setHandshake(true);
+                ->setHandshake(true)
+                ->addShippingMethod($shippingMethod);
         }
 
         return $ivySessionData;
