@@ -413,8 +413,6 @@ class ExpressService
             true
         );
 
-        // remove preselected shipping
-        $ivyExpressSessionData->setShippingMethod(null);
         
         $referenceId = Uuid::randomHex();
         $ivyExpressSessionData->setReferenceId($referenceId);
