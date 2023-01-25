@@ -405,11 +405,6 @@ class ExpressService
         $token = $salesChannelContext->getToken();
         $cart = $this->cartService->getCart($token, $salesChannelContext);
 
-        $delivery = $cart->getDeliveries()->first();
-        if ($delivery !== null) {
-            $this->cartService->removeShippingMethod($token, $salesChannelContext);
-        }
-
         $ivyExpressSessionData = $this->createIvyOrderData->getIvySessionDataFromCart(
             $cart,
             $salesChannelContext,

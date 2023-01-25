@@ -95,7 +95,13 @@ class createIvyOrderData
 
         $totalNet = $cartPrice->getNetPrice();
 
-        $total = $cartPrice->getTotalPrice();
+        if ($isExpress) {
+            $total = $cartPrice->getTotalPrice() - $shippingTotal;
+            $vat = $cartPrice->getCalculatedTaxes()->first()->getTax() - $cart->getShippingCosts()->getCalculatedTaxes()->first()->getTax();
+        } else {
+            $total = $cartPrice->getTotalPrice();
+            $vat = $cartPrice->getCalculatedTaxes()->first()->getTax();
+        }
 
         $vat = $cartPrice->getCalculatedTaxes()->first()->getTax();
 
