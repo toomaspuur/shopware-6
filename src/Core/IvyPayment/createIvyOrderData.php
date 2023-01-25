@@ -91,8 +91,15 @@ class createIvyOrderData
     {
         $cartPrice = $cart->getPrice();
 
-        $shippingTotal = $cart->getShippingCosts()->getTotalPrice() ?? 0;
-        $shippingVat = $cart->getShippingCosts()->getCalculatedTaxes()->first()->getTax() ?? 0;
+        $delivery = $cart->getDeliveries()->first();
+        if ($delivery !== null) {
+            $shippingTotal = $cart->getShippingCosts()->getTotalPrice() ?? 0;
+            $shippingVat = $cart->getShippingCosts()->getCalculatedTaxes()->first()->getTax() ?? 0;
+        } else {
+            $shippingTotal = 0;
+            $shippingVat = 0;
+        }
+
         $subTotal = $cartPrice->getPositionPrice() ?? 0;
 
         if ($isExpress) {
