@@ -16,7 +16,7 @@ jobs:
     #- name: Build extension
     #  run: shopware-cli extension build .
     - name: Zip extension
-      run: docker run --rm -v $(pwd):$(pwd) -w $(pwd) ghcr.io/friendsofshopware/shopware-cli:0.1.49-phpv7.2 extension zip .
+      run: docker run --rm -v $(pwd):$(pwd) -w $(pwd) ghcr.io/friendsofshopware/shopware-cli:0.1.48-phpv7.2 extension zip .
 
     - name: Upload artifact
       uses: actions/upload-artifact@v3
