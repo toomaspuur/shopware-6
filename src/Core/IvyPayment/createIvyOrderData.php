@@ -94,7 +94,7 @@ class createIvyOrderData
         try {
             $shippingCosts = $cart->getShippingCosts();
             $shippingTotal = $shippingCosts->getTotalPrice() ?? 0;
-            $shippingVat = $shippingCosts->getCalculatedTaxes()->first()->getTax() ?? 0;
+            $shippingVat = $shippingCosts->getCalculatedTaxes()->first() == null ? 0 : $shippingCosts->getCalculatedTaxes()->first()->getTax();
         } catch (\Exception $e) {
             $shippingTotal = 0;
             $shippingVat = 0;
