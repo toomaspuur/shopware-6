@@ -19,6 +19,15 @@ class price
 
     private string $currency;
 
+    private float $subTotal = 0.0;
+
+    public function setSubTotal(float $subTotal): price
+    {
+        $this->subTotal = $subTotal;
+
+        return $this;
+    }
+
     public function setTotalNet(float $totalNet): price
     {
         $this->totalNet = $totalNet;
@@ -52,6 +61,11 @@ class price
         $this->currency = $currency;
 
         return $this;
+    }
+
+    public function getSubTotal(): float
+    {
+        return $this->subTotal;
     }
 
     public function getTotalNet(): float

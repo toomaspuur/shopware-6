@@ -90,36 +90,50 @@ class createIvyOrderData
     ): sessionCreate
     {
         $cartPrice = $cart->getPrice();
-        $shippingPrice = $cart->getShippingCosts();
-        $shippingVat = $shippingPrice->getCalculatedTaxes()->first()->getTax();
-        $shippingTotal = $shippingPrice->getTotalPrice();
-        $shippingNet = $shippingTotal - $shippingVat;
 
-        $totalNet = $cartPrice->getNetPrice() - $shippingNet;
-
-        $total = $cartPrice->getTotalPrice();
-
-        $vat = $cartPrice->getCalculatedTaxes()->first()->getTax() - $shippingVat;
-
-        if ($skipShipping) {
-            $total -= $shippingTotal;
+        try {
+            $shippingCosts = $cart->getShippingCosts();
+            $shippingTotal = $shippingCosts->getTotalPrice() ?? 0;
+            $shippingVat = $shippingCosts->getCalculatedTaxes()->first() == null ? 0 : $shippingCosts->getCalculatedTaxes()->first()->getTax();
+        } catch (\Exception $e) {
             $shippingTotal = 0;
+            $shippingVat = 0;
+        }
+
+        $shippingNet = $shippingTotal - $shippingVat;
+        $subTotal = $cartPrice->getPositionPrice() ?? 0;
+        $totalNet = $cartPrice->getNetPrice() ?? 0;
+
+        if ($isExpress) {
+            $total = $cartPrice->getTotalPrice() - $shippingTotal;
+            $vat = $cartPrice->getCalculatedTaxes()->first()->getTax() - $shippingVat;
+            $totalNet = $totalNet - $shippingNet;
+            $shippingTotal = 0;
+            $shippingVat = 0;
+            $shippingNet = 0;
+        } else {
+            $total = $cartPrice->getTotalPrice();
+            $vat = $cartPrice->getCalculatedTaxes()->first()->getTax();
         }
 
         $price = new price();
-        $price->setTotalNet($totalNet)
+
+        $price
+            ->setTotalNet($totalNet)
             ->setVat($vat)
             ->setTotal($total)
             ->setShipping($shippingTotal)
-            ->setCurrency($context->getCurrency()->getIsoCode());
+            ->setCurrency($context->getCurrency()->getIsoCode())
+            ->setSubTotal($subTotal);
 
         $ivyLineItems = $this->getLineItemFromCart($cart);
-        $shippingMethod = $this->getShippingMethodFromCart($cart, $context);
+
         $ivySessionData = new sessionCreate();
-        $ivySessionData->setPrice($price)
-            ->setLineItems($ivyLineItems)
-            ->addShippingMethod($shippingMethod)
-            ->setCategory($config['IvyMcc'] ?? '');
+
+        $ivySessionData
+            ->setPrice($price)
+            ->setLineItems($ivyLineItems);
+
         if ($isExpress) {
             $ivySessionData
                 ->setExpress(true)
@@ -127,6 +141,7 @@ class createIvyOrderData
         } else {
             /** @var CustomerEntity $customer */
             $customer = $context->getCustomer();
+
             if ($customer) {
                 $prefill = new prefill($customer->getEmail());
                 $ivySessionData->setPrefill($prefill);
@@ -144,9 +159,12 @@ class createIvyOrderData
                 }
             }
 
+            $shippingMethod = $this->getShippingMethodFromCart($cart, $context);
+
             $ivySessionData
                 ->setExpress(false)
-                ->setHandshake(true);
+                ->setHandshake(true)
+                ->addShippingMethod($shippingMethod);
         }
 
         return $ivySessionData;
@@ -176,7 +194,8 @@ class createIvyOrderData
                 $vat = 0.0;
             }
 
-            $lineItem->setName($swLineItem->getLabel())
+            $lineItem
+                ->setName($swLineItem->getLabel())
                 ->setReferenceId($swLineItem->getReferencedId())
                 ->setSingleNet($netUnitPrice)
                 ->setSingleVat($vat)
