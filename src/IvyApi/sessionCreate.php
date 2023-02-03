@@ -39,6 +39,11 @@ class sessionCreate
 
     private prefill $prefill;
 
+    private ?string $successCallbackUrl;
+    private ?string $errorCallbackUrl;
+    private ?string $quoteCallbackUrl;
+    private ?string $completeCallbackUrl;
+
     /**
      * @return bool
      */
@@ -222,6 +227,70 @@ class sessionCreate
         $this->handshake = $handshake;
 
         return $this;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getSuccessCallbackUrl(): ?string
+    {
+        return $this->successCallbackUrl;
+    }
+
+    /**
+     * @param string|null $successCallbackUrl
+     */
+    public function setSuccessCallbackUrl(?string $successCallbackUrl): void
+    {
+        $this->successCallbackUrl = $successCallbackUrl;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getErrorCallbackUrl(): ?string
+    {
+        return $this->errorCallbackUrl;
+    }
+
+    /**
+     * @param string|null $errorCallbackUrl
+     */
+    public function setErrorCallbackUrl(?string $errorCallbackUrl): void
+    {
+        $this->errorCallbackUrl = $errorCallbackUrl;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getQuoteCallbackUrl(): ?string
+    {
+        return $this->quoteCallbackUrl;
+    }
+
+    /**
+     * @param string|null $quoteCallbackUrl
+     */
+    public function setQuoteCallbackUrl(?string $quoteCallbackUrl): void
+    {
+        $this->quoteCallbackUrl = $quoteCallbackUrl;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getCompleteCallbackUrl(): ?string
+    {
+        return $this->completeCallbackUrl;
+    }
+
+    /**
+     * @param string|null $completeCallbackUrl
+     */
+    public function setCompleteCallbackUrl(?string $completeCallbackUrl): void
+    {
+        $this->completeCallbackUrl = $completeCallbackUrl;
     }
 
 }

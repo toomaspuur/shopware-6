@@ -97,7 +97,7 @@ class IvyPaymentController extends StorefrontController
 
     /**
      * @Since("6.0.0.0")
-     * @Route("/ivypayment/failed-transaction", name="ivypayment.failed.transaction", methods={"GET", "POST"}, defaults={"XmlHttpRequest"=true})
+     * @Route("/ivypayment/failed-transaction", name="frontend.ivypayment.failed.transaction", methods={"GET", "POST"}, defaults={"XmlHttpRequest"=true})
      * @RouteScope(scopes={"storefront"})
      *
      * @throws AsyncPaymentFinalizeException
@@ -238,7 +238,7 @@ class IvyPaymentController extends StorefrontController
 
     /**
      * @Since("6.0.0.0")
-     * @Route("/ivypayment/finalize-transaction", name="ivypayment.finalize.transaction", methods={"GET", "POST"}, defaults={"XmlHttpRequest"=true})
+     * @Route("/ivypayment/finalize-transaction", name="frontend.ivypayment.finalize.transaction", methods={"GET", "POST"}, defaults={"XmlHttpRequest"=true})
      * @RouteScope(scopes={"storefront"})
      *
      * @throws AsyncPaymentFinalizeException

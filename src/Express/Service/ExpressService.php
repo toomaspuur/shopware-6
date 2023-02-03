@@ -364,6 +364,16 @@ class ExpressService
         // add plugin version as string to know whether to redirect to confirmation page after ivy checkout
         $ivySessionData->setPlugin('sw6-' . $this->version);
 
+        $quoteCallbackUrl = $this->router->generate('frontend.ivyexpress.callback', [], Router::ABSOLUTE_URL);
+        $successCallbackUrl = $this->router->generate('frontend.ivypayment.finalize.transaction', [], Router::ABSOLUTE_URL);
+        $errorCallbackUrl = $this->router->generate('frontend.ivypayment.failed.transaction', [], Router::ABSOLUTE_URL);
+        $completeCallbackUrl = $this->router->generate('frontend.ivyexpress.confirm', [], Router::ABSOLUTE_URL);
+
+        $ivySessionData->setSuccessCallbackUrl($successCallbackUrl);
+        $ivySessionData->setErrorCallbackUrl($errorCallbackUrl);
+        $ivySessionData->setQuoteCallbackUrl($quoteCallbackUrl);
+        $ivySessionData->setCompleteCallbackUrl($completeCallbackUrl);
+
         $jsonContent = $this->serializer->serialize($ivySessionData, 'json');
         $response = $this->ivyApiClient->sendApiRequest('checkout/session/create', $config, $jsonContent);
 
@@ -413,7 +423,7 @@ class ExpressService
             true
         );
 
-        
+
         $referenceId = Uuid::randomHex();
         $ivyExpressSessionData->setReferenceId($referenceId);
         $contextToken = $request->getSession()->get(PlatformRequest::HEADER_CONTEXT_TOKEN);
@@ -423,7 +433,18 @@ class ExpressService
         // add plugin version as string to know whether to redirect to confirmation page after ivy checkout
         $ivyExpressSessionData->setPlugin('sw6-' . $this->version);
 
+        $quoteCallbackUrl = $this->router->generate('frontend.ivyexpress.callback', [], Router::ABSOLUTE_URL);
+        $successCallbackUrl = $this->router->generate('frontend.ivypayment.finalize.transaction', [], Router::ABSOLUTE_URL);
+        $errorCallbackUrl = $this->router->generate('frontend.ivypayment.failed.transaction', [], Router::ABSOLUTE_URL);
+        $completeCallbackUrl = $this->router->generate('frontend.ivyexpress.confirm', [], Router::ABSOLUTE_URL);
+
+        $ivyExpressSessionData->setSuccessCallbackUrl($successCallbackUrl);
+        $ivyExpressSessionData->setErrorCallbackUrl($errorCallbackUrl);
+        $ivyExpressSessionData->setQuoteCallbackUrl($quoteCallbackUrl);
+        $ivyExpressSessionData->setCompleteCallbackUrl($completeCallbackUrl);
+
         $jsonContent = $this->serializer->serialize($ivyExpressSessionData, 'json');
+
         $response = $this->ivyApiClient->sendApiRequest('checkout/session/create', $config, $jsonContent);
 
 
