@@ -302,10 +302,6 @@ class ExpressController extends StorefrontController
                 if (empty($payload)) {
                     throw new IvyException('empty payload');
                 }
-                $contextToken = $payload['metadata'][PlatformRequest::HEADER_CONTEXT_TOKEN] ?? null;
-                if (empty($contextToken)) {
-                    throw new IvyException(PlatformRequest::HEADER_CONTEXT_TOKEN . ' not provided');
-                }
 
                 $this->logger->info('confirm payload is valid, start create order');
 
