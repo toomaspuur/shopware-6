@@ -121,6 +121,7 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
      */
     public function finalize(AsyncPaymentTransactionStruct $transaction, Request $request, SalesChannelContext $salesChannelContext): void
     {
+
         $transactionId = $transaction->getOrderTransaction()->getId();
 
         // Example check if the user cancelled. Might differ for each payment provider

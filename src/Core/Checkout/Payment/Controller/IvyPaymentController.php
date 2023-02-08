@@ -160,16 +160,9 @@ class IvyPaymentController extends StorefrontController
     
             $this->logger->debug('notification payload: ' . \print_r($payload, true));
             $request->request->set('status', $payload['status']);
-    
-            $paymentToken = $payload['metadata']['_sw_payment_token'] ?? null;
-    
-            if ($paymentToken === null) {
-                $this->logger->error('bad webhook request missing _sw_payment_token');
-                throw new MissingRequestParameterException('_sw_payment_token');
-            }
-    
+
             $isValid = $this->expressService->isValidRequest($request, $salesChannelContext);
-    
+
             if (!$isValid) {
                 $this->logger->error('webhook request: unauthenticated request');
                 return new JsonResponse(null, Response::HTTP_FORBIDDEN);
