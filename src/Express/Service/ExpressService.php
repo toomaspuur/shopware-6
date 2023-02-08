@@ -1100,7 +1100,7 @@ class ExpressService
     /**
      * @return string|null
      */
-    private function getPaymentMethodId(): ?string
+    public function getPaymentMethodId(): ?string
     {
         // Fetch ID for update
         $paymentCriteria = (new Criteria())->addFilter(new EqualsFilter('handlerIdentifier', IvyPaymentHandler::class));

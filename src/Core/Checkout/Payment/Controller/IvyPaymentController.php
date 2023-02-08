@@ -152,26 +152,50 @@ class IvyPaymentController extends StorefrontController
             return new JsonResponse(null, Response::HTTP_BAD_REQUEST);
         }
 
+        $isValid = $this->expressService->isValidRequest($request, $salesChannelContext);
+
+        if (!$isValid) {
+            $this->logger->error('webhook request: unauthenticated request');
+            return new JsonResponse(null, Response::HTTP_FORBIDDEN);
+        }
+
+        $this->logger->info('webhook request: valid request');
+
         if ($type === 'order_created' || $type === 'order_updated') {
             if (!isset($payload['status'])) {
                 $this->logger->error('bad webhook request');
                 return new JsonResponse(null, Response::HTTP_BAD_REQUEST);
             }
     
-            $this->logger->debug('notification payload: ' . \print_r($payload, true));
+            $this->logger->debug('webhook payload: ' . \print_r($payload, true));
+
+            $referenceId = $payload['referenceId'];
+            $paymentToken = $payload['metadata']['_sw_payment_token'];
+
+            if ($paymentToken === null) {
+                $order = $this->expressService->getIvyOrderByReference($referenceId);
+
+                if (empty($order)) {
+                    $this->logger->error('webhook request: order not found');
+                    return new JsonResponse(null, Response::HTTP_NOT_FOUND);
+                }
+
+                $transactionId = $order
+                    ->getTransactions()
+                    ->filterByPaymentMethodId($this->expressService->getPaymentMethodId())
+                    ->first()
+                    ->getId();
+            } else {
+                $token = $this->tokenFactoryInterfaceV2->parseToken($paymentToken);
+                $transactionId = $token->getTransactionId();
+            }
+
             $request->request->set('status', $payload['status']);
 
-            $isValid = $this->expressService->isValidRequest($request, $salesChannelContext);
-
-            if (!$isValid) {
-                $this->logger->error('webhook request: unauthenticated request');
-                return new JsonResponse(null, Response::HTTP_FORBIDDEN);
-            }
-    
-            $this->logger->info('webhook request: valid request');
-    
             $this->paymentService->updateTransaction(
                 $paymentToken,
+                $transactionId,
+                $this->expressService->getPaymentMethodId(),
                 $request,
                 $salesChannelContext
             );
