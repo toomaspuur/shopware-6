@@ -476,6 +476,15 @@ class ExpressService
         return $this->ivyPaymentSessionRepository->search($criteria, $context)->first();
     }
 
+    public function getIvyOrderByReference(string $referenceId): ?OrderEntity
+    {
+        $context = Context::createDefaultContext();
+        $criteria = new Criteria();
+        //TODO: add filter for payment method ivy and maybe paymentstatus
+        $criteria->addFilter(new EqualsFilter('id', $referenceId));
+        return $this->orderRepository->search($criteria, $context)->first();
+    }
+
     /**
      * @param string $referenceId
      * @param SalesChannelContext $salesChannelContext

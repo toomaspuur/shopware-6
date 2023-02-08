@@ -293,7 +293,7 @@ class ExpressController extends StorefrontController
         $this->logger->setLevel($this->configHandler->getLogLevel($salesChannelContext));
         $this->logger->debug('confirm action (finish url: ' . $finishUrl . ')');
         $isValid = $this->expressService->isValidRequest($request, $salesChannelContext);
-        $this->logger->debug('signatur ' . ($isValid ? 'valid' : 'not valid'));
+        $this->logger->debug('signature ' . ($isValid ? 'valid' : 'not valid'));
 
         if ($isValid === true) {
             try {
@@ -309,7 +309,21 @@ class ExpressController extends StorefrontController
 
                 $ivyPaymentSession = $this->expressService->getIvySessionByReference($referenceId);
                 if ($ivyPaymentSession === null) {
-                    throw new IvyException('ivy session not found by refenceId ' . $referenceId);
+                    $existingOrder = $this->expressService->getIvyOrderByReference($referenceId);
+
+                    if ($existingOrder) {
+                        $this->logger->info('order existing: ' . var_export($existingOrder, true));
+                        $response = new IvyJsonResponse([
+                            'redirectUrl' => $finishUrl,
+                            'displayId' => $existingOrder->getOrderNumber(),
+                            'metadata' => $payload['metadata'],
+                        ]);
+                        $signature = $this->expressService->sign(\stripslashes((string)$response->getContent()), $salesChannelContext);
+                        $response->headers->set('X-Ivy-Signature', $signature);
+                        return $response;
+                    } else {
+                        throw new IvyException('ivy session not found by referenceId ' . $referenceId);
+                    }
                 }
                 $this->logger->debug('loaded ivy session data from db');
                 $tempData = $ivyPaymentSession->getExpressTempData();
