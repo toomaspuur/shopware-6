@@ -121,25 +121,6 @@ class ExpressController extends StorefrontController
     public function callback(Request $request, RequestDataBag $inputData, SalesChannelContext $salesChannelContext): Response
     {
         $this->logger->setLevel($this->configHandler->getLogLevel($salesChannelContext));
-        /*
-         [2022-07-22T17:28:47.975375+00:00] ivypayment/express.INFO: !!!!!!!!!reseived ivy callback:
-        Array (
-            [shopperEmail] => test@test.de,
-            [appId] => 62d3ea101eca1e3554e85a92
-            [shipping] => Array (
-                [shippingAddress] => Array (
-                    [country] => DE
-                    [zipCode] => esdtseqwe
-                    [city] => sdgsdgeqwefdsf
-                    [line2] => sdgdsgsdewqefsdf //additi
-                    [line1] => testewqe //street, nr
-                    [lastName] => ewqewqfsfsd
-                    [firstName] => testwwqefsaf
-                )
-            )
-            [currency] => EUR
-        )
-        */
 
         $this->logger->info('reseived ivy callback: ' . \print_r($inputData->all(), true));
 
