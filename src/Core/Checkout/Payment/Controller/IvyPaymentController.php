@@ -129,7 +129,7 @@ class IvyPaymentController extends StorefrontController
 
     /**
      * @Since("6.0.0.0")
-     * @Route("/ivypayment/update-transaction", name="ivypayment.update.transaction", methods={"GET", "POST"}, defaults={"XmlHttpRequest"=true,"csrf_protected"=false})
+     * @Route("/ivypayment/update-transaction", name="ivypayment.update.transaction", methods={"GET", "POST"}, defaults={"XmlHttpRequest"=true,"csrf_protected"=false,"auth_required"=false})
      * @RouteScope(scopes={"storefront"})
      *
      * @throws AsyncPaymentFinalizeException
@@ -139,101 +139,69 @@ class IvyPaymentController extends StorefrontController
      * @throws UnknownPaymentMethodException
      * @psalm-suppress InvalidArrayAccess
      */
-    public function updateTransaction(Request $request): Response
+    public function updateTransaction(Request $request, SalesChannelContext $salesChannelContext): Response
     {
-        $this->logger->info('recived webhook notification');
-        $type = $request->request->get('type');
-        if ($type !== 'order_created' && $type !== 'order_updated') {
-            $this->logger->error('bad webhook request');
-            return new JsonResponse(null, Response::HTTP_BAD_REQUEST);
-        }
+        $this->logger->info('received webhook');
 
+        $type = $request->request->get('type');
         /** @var array $payload */
         $payload = $request->request->get('payload');
 
-        if (empty($payload) || !isset($payload['status'])) {
+        if (empty($type) || empty($payload)) {
             $this->logger->error('bad webhook request');
             return new JsonResponse(null, Response::HTTP_BAD_REQUEST);
         }
 
-        $this->logger->debug('notification payload: ' . \print_r($payload, true));
-        $request->request->set('status', $payload['status']);
-        $context = Context::createDefaultContext();
+        $isValid = $this->expressService->isValidRequest($request, $salesChannelContext);
 
-        $paymentToken = $payload['metadata']['_sw_payment_token'] ?? null;
-
-        if ($paymentToken === null) {
-            $this->logger->error('bad webhook request missing _sw_payment_token');
-            throw new MissingRequestParameterException('_sw_payment_token');
+        if (!$isValid) {
+            $this->logger->error('webhook request: unauthenticated request');
+            return new JsonResponse(null, Response::HTTP_FORBIDDEN);
         }
 
-        $salesChannelContext = $this->assembleSalesChannelContext($paymentToken);
+        $this->logger->info('webhook request: valid request');
 
-        if ($this->isValidRequest($request, $salesChannelContext)) {
+        if ($type === 'order_created' || $type === 'order_updated') {
+            if (!isset($payload['status'])) {
+                $this->logger->error('bad webhook request');
+                return new JsonResponse(null, Response::HTTP_BAD_REQUEST);
+            }
+    
+            $this->logger->debug('webhook payload: ' . \print_r($payload, true));
+
+            $referenceId = $payload['referenceId'];
+            $paymentToken = $payload['metadata']['_sw_payment_token'];
+
+            if ($paymentToken === null) {
+                $order = $this->expressService->getIvyOrderByReference($referenceId);
+
+                if (empty($order)) {
+                    $this->logger->error('webhook request: order not found');
+                    return new JsonResponse(null, Response::HTTP_NOT_FOUND);
+                }
+
+                $transactionId = $order
+                    ->getTransactions()
+                    ->filterByPaymentMethodId($this->expressService->getPaymentMethodId())
+                    ->first()
+                    ->getId();
+            } else {
+                $token = $this->tokenFactoryInterfaceV2->parseToken($paymentToken);
+                $transactionId = $token->getTransactionId();
+            }
+
+            $request->request->set('status', $payload['status']);
+
             $this->paymentService->updateTransaction(
                 $paymentToken,
+                $transactionId,
+                $this->expressService->getPaymentMethodId(),
                 $request,
                 $salesChannelContext
             );
-
-            if (isset($payload['referenceId']) && (string)$payload['referenceId'] !== '') {
-                $swOrderId = $this->getSwOrderIdFromReference((string)$payload['referenceId'], $context);
-                $criteria = new Criteria();
-                $criteria->addFilter(new EqualsFilter('swOrderId', $swOrderId));
-                $ivyPaymentId = $this->ivyPaymentSessionRepository->searchIds($criteria, $context)->firstId();
-                if ($ivyPaymentId !== null) {
-                    $this->ivyPaymentSessionRepository->upsert([
-                        [
-                            'id' => $ivyPaymentId,
-                            'ivyOrderId' => $payload['id'] ?? '',
-                            'status' => 'updateOrder_' . $payload['status'],
-                        ],
-                    ], $context);
-                }
-
-                if($type == 'order_created' && $payload['status'] != 'canceled') {
-                    $ivyPaymentSession = $this->expressService->getIvySessionByReference((string)$payload['referenceId']);
-
-                    if($ivyPaymentSession) {
-                        $swOrderId = $ivyPaymentSession->getSwOrderId();
-                        $swOrder = $this->expressService->getExpressOrder($swOrderId, $salesChannelContext);
-
-                        $config = $this->configHandler->getFullConfig($salesChannelContext);
-                        $jsonContent = \json_encode([
-                            'id' => $payload['id'],
-                            'referenceId' => $swOrder->getOrderNumber()
-                        ]);
-                        $this->logger->debug('update express ivy order: ' . \print_r($jsonContent, true));
-                        try {
-                            $this->ivyApiClient->sendApiRequest('order/update', $config, $jsonContent);
-                        } catch (\Exception $e) {
-                            $this->logger->error('cann not update ivy order: ' . $e->getMessage());
-                        }
-                    } else {
-                        $swOrderId = $this->getSwOrderIdFromReference((string)$payload['referenceId'], $context);
-                        $criteria = new Criteria([$swOrderId]);
-                        $swOrder = $this->orderRepository->search($criteria, $context)->first();
-                        $config = $this->configHandler->getFullConfig($salesChannelContext);
-                        if ($swOrder !== null) {
-                            $jsonContent = \json_encode([
-                                'id' => $payload['id'],
-                                'referenceId' => $swOrder->getOrderNumber(),
-                            ]);
-                            $this->logger->debug('update ivy order: ' . \print_r($jsonContent, true));
-                            try {
-                                $this->ivyApiClient->sendApiRequest('order/update', $config, $jsonContent);
-                            } catch (\Exception $e) {
-                                $this->logger->error('cann not update ivy order: ' . $e->getMessage());
-                            }
-                        }
-                    }
-                }
-            }
-
-            return new JsonResponse(null, Response::HTTP_OK);
         }
-        $this->logger->error('webhook internal server error');
-        return new JsonResponse(null, Response::HTTP_INTERNAL_SERVER_ERROR);
+
+        return new JsonResponse(null, Response::HTTP_OK);
     }
 
     /**

@@ -170,31 +170,29 @@ class IvyPaymentService
      * @psalm-suppress PossiblyNullArgument
      * @psalm-suppress DocblockTypeContradiction
      */
-    public function updateTransaction(string $paymentToken, Request $request, SalesChannelContext $context): TokenStruct
+    public function updateTransaction(string $paymentToken, string $transactionId, string $paymentMethodId, Request $request, SalesChannelContext $context): TokenStruct
     {
-        $token = $this->tokenFactory->parseToken($paymentToken);
-
-        $transactionId = $token->getTransactionId();
-
         if ($transactionId === null || !Uuid::isValid($transactionId)) {
-            throw new AsyncPaymentProcessException((string) $transactionId, "Payment JWT didn't contain a valid orderTransactionId");
+            throw new AsyncPaymentProcessException((string) $transactionId, "No valid orderTransactionId was provided.");
         }
 
         $transaction = $this->getPaymentTransactionStruct($transactionId, $context->getContext());
 
         /** @var IvyPaymentHandler $paymentHandler */
-        $paymentHandler = $this->getPaymentHandlerById($token->getPaymentMethodId() ?? '', $context->getContext());
+        $paymentHandler = $this->getPaymentHandlerById($paymentMethodId ?? '', $context->getContext());
 
         if ($paymentHandler === null) {
-            throw new UnknownPaymentMethodException($token->getPaymentMethodId());
+            throw new UnknownPaymentMethodException($paymentMethodId);
         }
 
         try {
             $paymentHandler->finalize($transaction, $request, $context);
         } catch (CustomerCanceledAsyncPaymentException $e) {
+            $token = $this->tokenFactory->parseToken($paymentToken);
             $this->transactionStateHandler->cancel($transactionId, $context->getContext());
             $token->setException($e);
         } catch (PaymentProcessException $e) {
+            $token = $this->tokenFactory->parseToken($paymentToken);
             $this->logger->error('An error occurred during finalizing async payment', ['orderTransactionId' => $transactionId, 'exceptionMessage' => $e->getMessage()]);
             $this->transactionStateHandler->fail($transactionId, $context->getContext());
             $token->setException($e);

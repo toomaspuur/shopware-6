@@ -121,25 +121,6 @@ class ExpressController extends StorefrontController
     public function callback(Request $request, RequestDataBag $inputData, SalesChannelContext $salesChannelContext): Response
     {
         $this->logger->setLevel($this->configHandler->getLogLevel($salesChannelContext));
-        /*
-         [2022-07-22T17:28:47.975375+00:00] ivypayment/express.INFO: !!!!!!!!!reseived ivy callback:
-        Array (
-            [shopperEmail] => test@test.de,
-            [appId] => 62d3ea101eca1e3554e85a92
-            [shipping] => Array (
-                [shippingAddress] => Array (
-                    [country] => DE
-                    [zipCode] => esdtseqwe
-                    [city] => sdgsdgeqwefdsf
-                    [line2] => sdgdsgsdewqefsdf //additi
-                    [line1] => testewqe //street, nr
-                    [lastName] => ewqewqfsfsd
-                    [firstName] => testwwqefsaf
-                )
-            )
-            [currency] => EUR
-        )
-        */
 
         $this->logger->info('reseived ivy callback: ' . \print_r($inputData->all(), true));
 
@@ -293,7 +274,7 @@ class ExpressController extends StorefrontController
         $this->logger->setLevel($this->configHandler->getLogLevel($salesChannelContext));
         $this->logger->debug('confirm action (finish url: ' . $finishUrl . ')');
         $isValid = $this->expressService->isValidRequest($request, $salesChannelContext);
-        $this->logger->debug('signatur ' . ($isValid ? 'valid' : 'not valid'));
+        $this->logger->debug('signature ' . ($isValid ? 'valid' : 'not valid'));
 
         if ($isValid === true) {
             try {
@@ -307,9 +288,23 @@ class ExpressController extends StorefrontController
 
                 $referenceId = $payload['referenceId'] ?? null;
 
+                //always prefer an existing order
+                $existingOrder = $this->expressService->getIvyOrderByReference($referenceId);
+                if ($existingOrder) {
+                    $this->logger->info('order existing: ' . var_export($existingOrder, true));
+                    $response = new IvyJsonResponse([
+                        'redirectUrl' => $finishUrl,
+                        'displayId' => $existingOrder->getOrderNumber(),
+                        'metadata' => $payload['metadata'],
+                    ]);
+                    $signature = $this->expressService->sign(\stripslashes((string)$response->getContent()), $salesChannelContext);
+                    $response->headers->set('X-Ivy-Signature', $signature);
+                    return $response;
+                }
+
                 $ivyPaymentSession = $this->expressService->getIvySessionByReference($referenceId);
                 if ($ivyPaymentSession === null) {
-                    throw new IvyException('ivy session not found by refenceId ' . $referenceId);
+                    throw new IvyException('ivy session not found by referenceId ' . $referenceId);
                 }
                 $this->logger->debug('loaded ivy session data from db');
                 $tempData = $ivyPaymentSession->getExpressTempData();
@@ -389,6 +384,14 @@ class ExpressController extends StorefrontController
             $ivyOrderId = $request->get('order-id');
             $this->logger->setLevel($this->configHandler->getLogLevel($salesChannelContext));
             $this->logger->debug('finish action reference: ' . $referenceId);
+
+            //always prefer an existing order
+            $existingOrder = $this->expressService->getIvyOrderByReference($referenceId);
+            if ($existingOrder) {
+                $this->logger->info('order existing: ' . var_export($existingOrder, true));
+                return $this->redirectToRoute('frontend.checkout.finish.page', ['orderId' => $existingOrder->getId()]);
+            }
+
             $ivyPaymentSession = $this->expressService->getIvySessionByReference($referenceId);
             if ($ivyPaymentSession === null) {
                 throw new IvyException('ivy session not found by refenceId ' . $referenceId);
