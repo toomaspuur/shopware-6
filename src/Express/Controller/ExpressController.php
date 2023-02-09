@@ -307,23 +307,23 @@ class ExpressController extends StorefrontController
 
                 $referenceId = $payload['referenceId'] ?? null;
 
+                //always prefer an existing order
+                $existingOrder = $this->expressService->getIvyOrderByReference($referenceId);
+                if ($existingOrder) {
+                    $this->logger->info('order existing: ' . var_export($existingOrder, true));
+                    $response = new IvyJsonResponse([
+                        'redirectUrl' => $finishUrl,
+                        'displayId' => $existingOrder->getOrderNumber(),
+                        'metadata' => $payload['metadata'],
+                    ]);
+                    $signature = $this->expressService->sign(\stripslashes((string)$response->getContent()), $salesChannelContext);
+                    $response->headers->set('X-Ivy-Signature', $signature);
+                    return $response;
+                }
+
                 $ivyPaymentSession = $this->expressService->getIvySessionByReference($referenceId);
                 if ($ivyPaymentSession === null) {
-                    $existingOrder = $this->expressService->getIvyOrderByReference($referenceId);
-
-                    if ($existingOrder) {
-                        $this->logger->info('order existing: ' . var_export($existingOrder, true));
-                        $response = new IvyJsonResponse([
-                            'redirectUrl' => $finishUrl,
-                            'displayId' => $existingOrder->getOrderNumber(),
-                            'metadata' => $payload['metadata'],
-                        ]);
-                        $signature = $this->expressService->sign(\stripslashes((string)$response->getContent()), $salesChannelContext);
-                        $response->headers->set('X-Ivy-Signature', $signature);
-                        return $response;
-                    } else {
-                        throw new IvyException('ivy session not found by referenceId ' . $referenceId);
-                    }
+                    throw new IvyException('ivy session not found by referenceId ' . $referenceId);
                 }
                 $this->logger->debug('loaded ivy session data from db');
                 $tempData = $ivyPaymentSession->getExpressTempData();
