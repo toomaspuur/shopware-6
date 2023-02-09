@@ -384,6 +384,14 @@ class ExpressController extends StorefrontController
             $ivyOrderId = $request->get('order-id');
             $this->logger->setLevel($this->configHandler->getLogLevel($salesChannelContext));
             $this->logger->debug('finish action reference: ' . $referenceId);
+
+            //always prefer an existing order
+            $existingOrder = $this->expressService->getIvyOrderByReference($referenceId);
+            if ($existingOrder) {
+                $this->logger->info('order existing: ' . var_export($existingOrder, true));
+                return $this->redirectToRoute('frontend.checkout.finish.page', ['orderId' => $existingOrder->getId()]);
+            }
+
             $ivyPaymentSession = $this->expressService->getIvySessionByReference($referenceId);
             if ($ivyPaymentSession === null) {
                 throw new IvyException('ivy session not found by refenceId ' . $referenceId);
