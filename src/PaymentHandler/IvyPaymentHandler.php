@@ -121,6 +121,7 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
      */
     public function finalize(AsyncPaymentTransactionStruct $transaction, Request $request, SalesChannelContext $salesChannelContext): void
     {
+
         $transactionId = $transaction->getOrderTransaction()->getId();
 
         // Example check if the user cancelled. Might differ for each payment provider
@@ -145,45 +146,37 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
 
         switch ($paymentState) {
             case 'failed':
-                $this->transactionStateHandler->fail($transaction->getOrderTransaction()->getId(), $context);
-
+                $this->transactionStateHandler->fail($transactionId, $context);
                 break;
 
             case 'canceled':
-                $this->transactionStateHandler->cancel($transaction->getOrderTransaction()->getId(), $context);
-
+                $this->transactionStateHandler->cancel($transactionId, $context);
                 break;
 
             case 'processing':
-                $this->transactionStateHandler->process($transaction->getOrderTransaction()->getId(), $context);
-
+                $this->transactionStateHandler->process($transactionId, $context);
                 break;
 
             case 'authorised':
-                $this->transactionStateHandler->authorize($transaction->getOrderTransaction()->getId(), $context);
-
+            case 'waiting_for_payment':
+                $this->transactionStateHandler->authorize($transactionId, $context);
                 break;
 
             case 'paid':
-                // Payment completed, set transaction status to "paid"
-                $this->transactionStateHandler->paid($transaction->getOrderTransaction()->getId(), $context);
-
+                $this->transactionStateHandler->paid($transactionId, $context);
                 break;
 
             case 'disputed':
             case 'in_refund':
-                $this->transactionStateHandler->chargeback($transaction->getOrderTransaction()->getId(), $context);
-
+                $this->transactionStateHandler->chargeback($transactionId, $context);
                 break;
 
             case 'refunded':
-                $this->transactionStateHandler->refund($transaction->getOrderTransaction()->getId(), $context);
-
+                $this->transactionStateHandler->refund($transactionId, $context);
                 break;
 
             case 'in_dispute':
             default:
-            // don't change payment status
                 break;
         }
     }
