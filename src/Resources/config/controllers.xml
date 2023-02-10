@@ -12,7 +12,6 @@
             <argument type="service" id="Shopware\Core\Checkout\Cart\Order\OrderConverter"/>
             <argument type="service" id="Shopware\Core\Checkout\Payment\Cart\Token\JWTFactoryV2"/>
             <argument type="service" id="order.repository"/>
-            <argument type="service" id="wizmogmbh_ivypayment.repository"/>
             <argument type="service" id="WizmoGmbh\IvyPayment\Components\Config\ConfigHandler"/>
             <argument type="service" id="wizmo_gmbh.ivy_payment.ivy_api.api_client"/>
             <argument type="service" id="hcou.ivypayment.logger.payment_logger"/>

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace WizmoGmbh\IvyPayment\PaymentHandler;
 
+use Doctrine\DBAL\Exception;
 use GuzzleHttp\Exception\GuzzleException;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
 use Shopware\Core\Checkout\Order\OrderEntity;
@@ -26,11 +27,11 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Serializer\Encoder\XmlEncoder;
-use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 use Symfony\Component\Serializer\Serializer;
 use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
 use WizmoGmbh\IvyPayment\Components\CustomObjectNormalizer;
 use WizmoGmbh\IvyPayment\Core\IvyPayment\createIvyOrderData;
+use WizmoGmbh\IvyPayment\Exception\IvyApiException;
 use WizmoGmbh\IvyPayment\IvyApi\ApiClient;
 use WizmoGmbh\IvyPayment\Logger\IvyLogger;
 
@@ -43,8 +44,6 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
 
     private createIvyOrderData $createIvyOrderData;
 
-    private EntityRepositoryInterface $ivyPaymentSessionRepository;
-
     private EntityRepositoryInterface $orderRepository;
 
     private IvyLogger $logger;
@@ -55,7 +54,6 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
      * @param OrderTransactionStateHandler $transactionStateHandler
      * @param EntityRepositoryInterface $orderRepository
      * @param createIvyOrderData $createIvyOrderData
-     * @param EntityRepositoryInterface $ivyPaymentSessionRepository
      * @param ConfigHandler $configHandler
      * @param ApiClient $apiClient
      * @param IvyLogger $logger
@@ -64,7 +62,6 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
         OrderTransactionStateHandler $transactionStateHandler,
         EntityRepositoryInterface $orderRepository,
         createIvyOrderData $createIvyOrderData,
-        EntityRepositoryInterface $ivyPaymentSessionRepository,
         ConfigHandler $configHandler,
         ApiClient $apiClient,
         IvyLogger $logger
@@ -72,7 +69,6 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
         $this->transactionStateHandler = $transactionStateHandler;
         $this->orderRepository = $orderRepository;
         $this->createIvyOrderData = $createIvyOrderData;
-        $this->ivyPaymentSessionRepository = $ivyPaymentSessionRepository;
         $this->configHandler = $configHandler;
 
         $this->logger = $logger;
@@ -102,7 +98,6 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
 
             if (\is_array($response) && !empty($response['redirectUrl'])) {
                 $redirectUrl = $response['redirectUrl'];
-                $this->writeDb($transaction, $response, $salesChannelContext);
             }
         } catch (\Exception $e) {
             throw new AsyncPaymentProcessException(
@@ -185,8 +180,8 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
      * @param AsyncPaymentTransactionStruct $transaction
      * @param SalesChannelContext $salesChannelContext
      * @return array|false
-     * @throws \Doctrine\DBAL\Exception
-     * @throws \WizmoGmbh\IvyPayment\Exception\IvyApiException
+     * @throws Exception
+     * @throws IvyApiException
      *
      * @return false|mixed
      * @psalm-suppress PossiblyNullArgument
@@ -229,20 +224,6 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
         \parse_str((string) $query, $params);
 
         return $params['_sw_payment_token'] ?? null;
-    }
-
-    private function writeDb(AsyncPaymentTransactionStruct $transaction, array $content, SalesChannelContext $salesChannelContext): void
-    {
-        if (!empty($content['redirectUrl'])) {
-            $this->ivyPaymentSessionRepository->create([
-                [
-                    'id' => Uuid::randomHex(),
-                    'status' => 'createOrder',
-                    'swOrderId' => $transaction->getOrder()->getId(),
-                    'ivySessionId' => $content['id'],
-                ],
-            ], $salesChannelContext->getContext());
-        }
     }
 
     /**

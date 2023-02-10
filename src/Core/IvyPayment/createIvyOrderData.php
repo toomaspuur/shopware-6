@@ -109,8 +109,6 @@ class createIvyOrderData
             $vat = $cartPrice->getCalculatedTaxes()->first()->getTax() - $shippingVat;
             $totalNet = $totalNet - $shippingNet;
             $shippingTotal = 0;
-            $shippingVat = 0;
-            $shippingNet = 0;
         } else {
             $total = $cartPrice->getTotalPrice();
             $vat = $cartPrice->getCalculatedTaxes()->first()->getTax();

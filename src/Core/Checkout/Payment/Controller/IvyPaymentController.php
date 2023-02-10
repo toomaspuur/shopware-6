@@ -35,7 +35,6 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
-use WizmoGmbh\IvyPayment\Core\Checkout\Order\IvyPaymentSessionEntity;
 use WizmoGmbh\IvyPayment\IvyApi\ApiClient;
 use WizmoGmbh\IvyPayment\Logger\IvyLogger;
 use WizmoGmbh\IvyPayment\Services\IvyPaymentService;
@@ -52,8 +51,6 @@ class IvyPaymentController extends StorefrontController
 
     private EntityRepositoryInterface $orderRepository;
 
-    private EntityRepositoryInterface $ivyPaymentSessionRepository;
-
     private ConfigHandler $configHandler;
 
     private ApiClient $ivyApiClient;
@@ -67,7 +64,6 @@ class IvyPaymentController extends StorefrontController
      * @param OrderConverter $orderConverter
      * @param TokenFactoryInterfaceV2 $tokenFactoryInterfaceV2
      * @param EntityRepositoryInterface $orderRepository
-     * @param EntityRepositoryInterface $ivyPaymentSessionRepository
      * @param ConfigHandler $configHandler
      * @param ApiClient $ivyApiClient
      * @param IvyLogger $logger
@@ -78,7 +74,6 @@ class IvyPaymentController extends StorefrontController
         OrderConverter $orderConverter,
         TokenFactoryInterfaceV2 $tokenFactoryInterfaceV2,
         EntityRepositoryInterface $orderRepository,
-        EntityRepositoryInterface $ivyPaymentSessionRepository,
         ConfigHandler $configHandler,
         ApiClient $ivyApiClient,
         IvyLogger $logger,
@@ -88,7 +83,6 @@ class IvyPaymentController extends StorefrontController
         $this->orderConverter = $orderConverter;
         $this->tokenFactoryInterfaceV2 = $tokenFactoryInterfaceV2;
         $this->orderRepository = $orderRepository;
-        $this->ivyPaymentSessionRepository = $ivyPaymentSessionRepository;
         $this->configHandler = $configHandler;
         $this->ivyApiClient = $ivyApiClient;
         $this->logger = $logger;
@@ -108,20 +102,14 @@ class IvyPaymentController extends StorefrontController
      */
     public function failedTransaction(Request $request): Response
     {
-        $expressRedirect = $this->handleExpress($request, true);
-        if ($expressRedirect) {
-            return $expressRedirect;
-        }
-
         $finishUrl = '/account/order';
+        $referenceId = $request->get('reference');
 
-        $context = Context::createDefaultContext();
-        $swOrderId = $this->getSwOrderIdFromReference((string)($request->get('reference') ?? ''), $context);
+        $order = $this->expressService->getIvyOrderByReference($referenceId);
 
-        if (!empty($swOrderId)) {
+        if ($order !== null) {
             $this->finalizeTransaction($request, 'failed');
-
-            $finishUrl = '/account/order/edit/' . $swOrderId . '?error-code=CHECKOUT__UNKNOWN_ERROR';
+            $finishUrl = '/account/order/edit/' . $order->getId() . '?error-code=CHECKOUT__UNKNOWN_ERROR';
         }
 
         return new RedirectResponse($finishUrl);
@@ -136,7 +124,7 @@ class IvyPaymentController extends StorefrontController
      * @throws CustomerCanceledAsyncPaymentException
      * @throws InvalidTransactionException
      * @throws TokenExpiredException
-     * @throws UnknownPaymentMethodException
+     * @throws UnknownPaymentMethodException|\Doctrine\DBAL\Exception
      * @psalm-suppress InvalidArrayAccess
      */
     public function updateTransaction(Request $request, SalesChannelContext $salesChannelContext): Response
@@ -174,9 +162,9 @@ class IvyPaymentController extends StorefrontController
 
             if ($paymentToken === null) {
                 $order = $this->expressService->getIvyOrderByReference($referenceId);
-
-                if (empty($order)) {
-                    $this->logger->error('webhook request: order not found');
+                $this->logger->debug('no payment token');
+                if ($order === null) {
+                    $this->logger->error('webhook request: order not found with: '.$referenceId);
                     return new JsonResponse(null, Response::HTTP_NOT_FOUND);
                 }
 
@@ -186,11 +174,13 @@ class IvyPaymentController extends StorefrontController
                     ->first()
                     ->getId();
             } else {
+                $this->logger->debug('payment token: '.$paymentToken);
                 $token = $this->tokenFactoryInterfaceV2->parseToken($paymentToken);
                 $transactionId = $token->getTransactionId();
             }
 
             $request->request->set('status', $payload['status']);
+            $this->logger->debug('set status to: ' . $payload['status'] . ' for referenceId: '.$referenceId);
 
             $this->paymentService->updateTransaction(
                 $paymentToken,
@@ -220,9 +210,6 @@ class IvyPaymentController extends StorefrontController
         $paymentToken = $request->get('_sw_payment_token');
         $context = Context::createDefaultContext();
 
-        $swOrderId = $this->getSwOrderIdFromReference((string)($request->get('reference') ?? ''), $context);
-        $ivyOrderId = $request->get('order-id');
-
         if ($paymentToken === null) {
             throw new MissingRequestParameterException('_sw_payment_token');
         }
@@ -235,24 +222,6 @@ class IvyPaymentController extends StorefrontController
             $salesChannelContext
         );
 
-        if ((string)$swOrderId !== '') {
-            $criteria = new Criteria();
-            $criteria->addFilter(new EqualsFilter('swOrderId', $swOrderId));
-            $ivyPaymentId = $this->ivyPaymentSessionRepository->searchIds($criteria, $context)->firstId();
-            if ($ivyPaymentId !== null) {
-                $data = [
-                    'id'        => $ivyPaymentId,
-                    'swOrderId' => $swOrderId,
-                    'status'    => $status,
-                ];
-
-                if (!empty($ivyOrderId)) {
-                    $data['ivyOrderId'] = $ivyOrderId;
-                }
-                $this->ivyPaymentSessionRepository->upsert([$data], $context);
-            }
-        }
-
         $response = $this->handleException($result);
         if ($response !== null) {
             return $response;
@@ -264,24 +233,6 @@ class IvyPaymentController extends StorefrontController
         }
 
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
-    }
-
-    /**
-     * @param string $referenceId
-     * @param Context $context
-     * @return string
-     */
-    private function getSwOrderIdFromReference(string $referenceId, Context $context): string
-    {
-        // if reference with ordernumber updated
-        $criteria = new Criteria();
-        $criteria->addFilter(new EqualsFilter('orderNumber', $referenceId));
-        /** @var OrderEntity|null $orderEntity */
-        $orderEntity = $this->orderRepository->search($criteria, $context)->first();
-        if ($orderEntity !== null) {
-            return $orderEntity->getId();
-        }
-        return $referenceId;
     }
 
     /**
@@ -336,52 +287,5 @@ class IvyPaymentController extends StorefrontController
         }
 
         return $this->orderConverter->assembleSalesChannelContext($order, $context);
-    }
-
-    /**
-     * @psalm-suppress PossiblyInvalidArgument
-     */
-    private function isValidRequest(Request $request, SalesChannelContext $salesChannelContext): bool
-    {
-        $config = $this->configHandler->getFullConfig($salesChannelContext);
-        $headers = $request->server->getHeaders();
-        $hash = \hash_hmac(
-            'sha256',
-            $request->getContent(),
-            $config['IvyWebhookSecret']
-        );
-        if (isset($headers['X-Ivy-Signature']) && $headers['X-Ivy-Signature'] === $hash) {
-            return true;
-        }
-        return isset($headers['X_IVY_SIGNATURE']) && $headers['X_IVY_SIGNATURE'] === $hash;
-    }
-
-    /**
-     * @param Request $request
-     * @param bool $failed
-     * @return Response|null
-     */
-    private function handleExpress(Request $request, bool $failed = false): ?Response
-    {
-        $referenceId = $request->get('reference');
-        $criteria = new Criteria([$referenceId]);
-        /** @var IvyPaymentSessionEntity|null $expressSession */
-        $expressSession = $this->ivyPaymentSessionRepository
-                ->search($criteria, Context::createDefaultContext())
-                ->first();
-        if ($expressSession !== null) {
-            if ($failed) {
-                $this->addFlash(self::DANGER, $this->trans('ivypaymentplugin.express.checkout.error'));
-            }
-            $swOrderId = $expressSession->getSwOrderId() ;
-            if ($swOrderId === null) {
-                return $this->redirectToRoute('frontend.checkout.cart.page');
-            }
-            $request->query->set('reference', $swOrderId);
-            $this->finalizeTransaction($request, 'failed');
-            $finishUrl = '/account/order/edit/' . $swOrderId . '?error-code=CHECKOUT__UNKNOWN_ERROR';
-            return new RedirectResponse($finishUrl);
-        }
-        return null;
     }
 }

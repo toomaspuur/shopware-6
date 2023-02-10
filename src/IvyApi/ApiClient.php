@@ -47,7 +47,7 @@ class ApiClient
             if ($response->getStatusCode() === 200) {
                 $response = \json_decode((string)$response->getBody(), true, 512, JSON_THROW_ON_ERROR);
             } else {
-                $message = 'invalis response status: ' . $response->getStatusCode();
+                $message = 'invalid response status: ' . $response->getStatusCode();
                 $this->apiLogger->error($message);
                 throw new IvyApiException($message);
             }

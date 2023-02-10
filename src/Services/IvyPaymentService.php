@@ -21,10 +21,8 @@ use Shopware\Core\Checkout\Payment\Cart\Token\TokenStruct;
 use Shopware\Core\Checkout\Payment\Exception\AsyncPaymentFinalizeException;
 use Shopware\Core\Checkout\Payment\Exception\AsyncPaymentProcessException;
 use Shopware\Core\Checkout\Payment\Exception\CustomerCanceledAsyncPaymentException;
-use Shopware\Core\Checkout\Payment\Exception\InvalidOrderException;
 use Shopware\Core\Checkout\Payment\Exception\InvalidTransactionException;
 use Shopware\Core\Checkout\Payment\Exception\PaymentProcessException;
-use Shopware\Core\Checkout\Payment\Exception\SyncPaymentProcessException;
 use Shopware\Core\Checkout\Payment\Exception\TokenExpiredException;
 use Shopware\Core\Checkout\Payment\Exception\UnknownPaymentMethodException;
 use Shopware\Core\Checkout\Payment\PaymentMethodEntity;
@@ -32,60 +30,26 @@ use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\Uuid\Uuid;
-use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\System\SalesChannel\Context\SalesChannelContextServiceInterface;
-use Shopware\Core\System\SalesChannel\Context\SalesChannelContextServiceParameters;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
-use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use WizmoGmbh\IvyPayment\PaymentHandler\IvyPaymentHandler;
 
 class IvyPaymentService
 {
-    /**
-     * @var PaymentTransactionChainProcessor
-     */
-    private $paymentProcessor;
+    private PaymentTransactionChainProcessor $paymentProcessor;
 
-    /**
-     * @var TokenFactoryInterfaceV2
-     */
-    private $tokenFactory;
+    private TokenFactoryInterfaceV2 $tokenFactory;
 
-    /**
-     * @var EntityRepositoryInterface
-     */
-    private $paymentMethodRepository;
+    private EntityRepositoryInterface $paymentMethodRepository;
 
-    /**
-     * @var PaymentHandlerRegistry
-     */
-    private $paymentHandlerRegistry;
+    private PaymentHandlerRegistry $paymentHandlerRegistry;
 
-    /**
-     * @var EntityRepositoryInterface
-     */
-    private $orderTransactionRepository;
+    private EntityRepositoryInterface $orderTransactionRepository;
 
-    /**
-     * @var OrderTransactionStateHandler
-     */
-    private $transactionStateHandler;
+    private OrderTransactionStateHandler $transactionStateHandler;
 
-    /**
-     * @var LoggerInterface
-     */
-    private $logger;
-
-    /**
-     * @var EntityRepositoryInterface
-     */
-    private $orderRepository;
-
-    /**
-     * @var SalesChannelContextServiceInterface
-     */
-    private $contextService;
+    private LoggerInterface $logger;
 
     public function __construct(
         PaymentTransactionChainProcessor $paymentProcessor,
@@ -94,9 +58,7 @@ class IvyPaymentService
         PaymentHandlerRegistry $paymentHandlerRegistry,
         EntityRepositoryInterface $orderTransactionRepository,
         OrderTransactionStateHandler $transactionStateHandler,
-        LoggerInterface $logger,
-        EntityRepositoryInterface $orderRepository,
-        SalesChannelContextServiceInterface $contextService
+        LoggerInterface $logger
     ) {
         $this->paymentProcessor = $paymentProcessor;
         $this->tokenFactory = $tokenFactory;
@@ -105,60 +67,6 @@ class IvyPaymentService
         $this->orderTransactionRepository = $orderTransactionRepository;
         $this->transactionStateHandler = $transactionStateHandler;
         $this->logger = $logger;
-        $this->orderRepository = $orderRepository;
-        $this->contextService = $contextService;
-    }
-
-    /**
-     * @throws AsyncPaymentProcessException
-     * @throws InvalidOrderException
-     * @throws SyncPaymentProcessException
-     * @throws UnknownPaymentMethodException
-     */
-    public function handlePaymentByOrder(
-        string $orderId,
-        RequestDataBag $dataBag,
-        SalesChannelContext $context,
-        ?string $finishUrl = null,
-        ?string $errorUrl = null
-    ): ?RedirectResponse {
-        if (!Uuid::isValid($orderId)) {
-            throw new InvalidOrderException($orderId);
-        }
-
-        $order = $this->orderRepository
-            ->search(new Criteria([$orderId]), $context->getContext())
-            ->first();
-
-        if ($order === null) {
-            throw new InvalidOrderException($orderId);
-        }
-
-        if ($context->getCurrency()->getId() !== $order->getCurrencyId()) {
-            $context = $this->contextService->get(
-                new SalesChannelContextServiceParameters(
-                    $context->getSalesChannelId(),
-                    $context->getToken(),
-                    $context->getContext()->getLanguageId(),
-                    $order->getCurrencyId()
-                )
-            );
-        }
-
-        try {
-            return $this->paymentProcessor->process($orderId, $dataBag, $context, $finishUrl, $errorUrl);
-        } catch (PaymentProcessException $e) {
-            $transactionId = $e->getOrderTransactionId();
-            $this->logger->error('An error occurred during processing the payment', ['orderTransactionId' => $transactionId, 'exceptionMessage' => $e->getMessage()]);
-            $this->transactionStateHandler->fail($transactionId, $context->getContext());
-            if ($errorUrl !== null) {
-                $errorUrl .= (\parse_url($errorUrl, \PHP_URL_QUERY) ? '&' : '?') . 'error-code=' . $e->getErrorCode();
-
-                return new RedirectResponse($errorUrl);
-            }
-
-            throw $e;
-        }
     }
 
     /**
