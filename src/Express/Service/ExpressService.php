@@ -286,6 +286,7 @@ class ExpressService
         );
         $referenceId = Uuid::randomHex();
         $ivySessionData->setReferenceId($referenceId);
+        // This one work when $request is a RequestDataBag Object (see IvyPaymentHandler::pay)
         $contextToken = $request->getSession()->get(PlatformRequest::HEADER_CONTEXT_TOKEN);
         $ivySessionData->setMetadata([
             PlatformRequest::HEADER_CONTEXT_TOKEN => $contextToken
