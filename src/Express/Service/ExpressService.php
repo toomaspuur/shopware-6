@@ -39,7 +39,6 @@ use Symfony\Component\Serializer\Encoder\XmlEncoder;
 use Symfony\Component\Serializer\Serializer;
 use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
 use WizmoGmbh\IvyPayment\Components\CustomObjectNormalizer;
-use WizmoGmbh\IvyPayment\Core\Checkout\Order\IvyPaymentSessionEntity;
 use WizmoGmbh\IvyPayment\Core\IvyPayment\createIvyOrderData;
 use WizmoGmbh\IvyPayment\Exception\IvyApiException;
 use WizmoGmbh\IvyPayment\Exception\IvyException;
@@ -264,32 +263,40 @@ class ExpressService
 
 
     /**
-     * @param Request $request
+     * @param string $contextToken
      * @param SalesChannelContext $salesChannelContext
      * @param bool $express
+     * @param OrderEntity|null $order
      * @return string
      * @throws Exception
      * @throws IvyApiException
      */
-    public function createCheckoutSession(Request $request, SalesChannelContext $salesChannelContext, bool $express): string
+    public function createCheckoutSession(string $contextToken, SalesChannelContext $salesChannelContext, bool $express, OrderEntity $order = null): string
     {
         $config = $this->configHandler->getFullConfig($salesChannelContext);
         $token = $salesChannelContext->getToken();
         $cart = $this->cartService->getCart($token, $salesChannelContext);
 
-        $ivySessionData = $this->createIvyOrderData->getIvySessionDataFromCart(
-            $cart,
-            $salesChannelContext,
-            $config,
-            $express,
-            $express
-        );
-        $referenceId = Uuid::randomHex();
+        if ($order) {
+            $ivySessionData = $this->createIvyOrderData->getSessionCreateDataFromOrder($order, $config);
+            $referenceId = $order->getId();
+        } else {
+            $ivySessionData = $this->createIvyOrderData->getIvySessionDataFromCart(
+                $cart,
+                $salesChannelContext,
+                $config,
+                $express,
+                $express
+            );
+            $referenceId = Uuid::randomHex();
+        }
+
         $ivySessionData->setReferenceId($referenceId);
-        // This one work when $request is a RequestDataBag Object (see IvyPaymentHandler::pay)
-        $contextToken = $request->getSession()->get(PlatformRequest::HEADER_CONTEXT_TOKEN);
+
+        //Add the token as sw-context and payment-token
         $ivySessionData->setMetadata([
-            PlatformRequest::HEADER_CONTEXT_TOKEN => $contextToken
+            PlatformRequest::HEADER_CONTEXT_TOKEN => $contextToken,
+            '_sw_payment_token' => $contextToken,
         ]);
         // add plugin version as string to know whether to redirect to confirmation page after ivy checkout
         $ivySessionData->setPlugin('sw6-' . $this->version);
@@ -556,6 +563,9 @@ class ExpressService
         $this->logger->info('Initiate a payment for an order');
         $request = new Request([], [
             'orderId'      => $orderData['id'],
+            'paymentDetails' => [
+                'confirmed' => true
+            ]
         ]);
         $request->setMethod('POST');
         $request->headers->set(PlatformRequest::HEADER_CONTEXT_TOKEN, $contextToken);
@@ -566,9 +576,9 @@ class ExpressService
             $salesChannelContext->getContext()
         );
         $paymentHandlerData = json_decode((string)$response->getContent(), true);
-        $redirectUrl = \stripslashes($paymentHandlerData['redirectUrl']);
+        $redirectUrl = \stripslashes($paymentHandlerData['redirectUrl'] ?? '');
         $this->logger->info('redirectUrl: ' . $redirectUrl);
-        $paymentToken = $this->getToken(\stripslashes($paymentHandlerData['redirectUrl'] ?? ''));
+        $paymentToken = $this->getToken($redirectUrl);
         $this->logger->info('paymentToken: ' . $paymentToken);
         $orderData['_sw_payment_token'] = $paymentToken;
 

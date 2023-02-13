@@ -65,7 +65,7 @@ class ExpressController extends StorefrontController
      */
     public function checkoutStart(Request $request, SalesChannelContext $salesChannelContext): Response
     {
-        return $this->_checkoutStart($request, $salesChannelContext, false);
+        return $this->_checkoutStart($request->getSession()->get(PlatformRequest::HEADER_CONTEXT_TOKEN), $salesChannelContext, false);
     }
 
     /**
@@ -73,17 +73,17 @@ class ExpressController extends StorefrontController
      */
     public function expressStart(Request $request, SalesChannelContext $salesChannelContext): Response
     {
-        return $this->_checkoutStart($request, $salesChannelContext, true);
+        return $this->_checkoutStart($request->getSession()->get(PlatformRequest::HEADER_CONTEXT_TOKEN), $salesChannelContext, true);
     }
 
-    private function _checkoutStart(Request $request, SalesChannelContext $salesChannelContext, bool $express): Response
+    public function _checkoutStart(string $contextToken, SalesChannelContext $salesChannelContext, bool $express): IvyJsonResponse
     {
         $this->logger->setLevel($this->configHandler->getLogLevel($salesChannelContext));
         $this->logger->info('-- create session -- express: ' . $express);
         $salesChannelContext = $this->expressService->switchPaymentMethod($salesChannelContext);
         $data = [];
         try {
-            $redirectUrl = $this->expressService->createCheckoutSession($request, $salesChannelContext, $express);
+            $redirectUrl = $this->expressService->createCheckoutSession($contextToken, $salesChannelContext, $express);
             $this->logger->info('redirect to ' . $redirectUrl);
             $data['success'] = true;
             $data['redirectUrl'] = $redirectUrl;
@@ -267,7 +267,7 @@ class ExpressController extends StorefrontController
                 //always prefer an existing order
                 $existingOrder = $this->expressService->getIvyOrderByReference($referenceId);
                 if ($existingOrder) {
-                    $this->logger->info('order existing: ' . var_export($existingOrder, true));
+                    $this->logger->info('order existing');
                     $response = new IvyJsonResponse([
                         'redirectUrl' => $finishUrl,
                         'displayId' => $existingOrder->getOrderNumber(),

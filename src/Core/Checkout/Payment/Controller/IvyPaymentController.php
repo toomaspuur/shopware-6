@@ -147,7 +147,7 @@ class IvyPaymentController extends StorefrontController
             return new JsonResponse(null, Response::HTTP_FORBIDDEN);
         }
 
-        $this->logger->info('webhook request: valid request');
+        $this->logger->info('webhook request: valid request ==> '. $type);
 
         if ($type === 'order_created' || $type === 'order_updated') {
             if (!isset($payload['status'])) {

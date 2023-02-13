@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace WizmoGmbh\IvyPayment\PaymentHandler;
 
-use Doctrine\DBAL\Exception;
 use GuzzleHttp\Exception\GuzzleException;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
 use Shopware\Core\Checkout\Order\OrderEntity;
@@ -20,65 +19,41 @@ use Shopware\Core\Checkout\Payment\Exception\CustomerCanceledAsyncPaymentExcepti
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
-use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Serializer\Encoder\JsonEncoder;
-use Symfony\Component\Serializer\Encoder\XmlEncoder;
-use Symfony\Component\Serializer\Serializer;
-use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
-use WizmoGmbh\IvyPayment\Components\CustomObjectNormalizer;
-use WizmoGmbh\IvyPayment\Core\IvyPayment\createIvyOrderData;
-use WizmoGmbh\IvyPayment\Exception\IvyApiException;
-use WizmoGmbh\IvyPayment\IvyApi\ApiClient;
 use WizmoGmbh\IvyPayment\Logger\IvyLogger;
-use WizmoGmbh\IvyPayment\Express\Controller\ExpressController;
+use WizmoGmbh\IvyPayment\Express\Service\ExpressService;
 
 
 class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
 {
     private OrderTransactionStateHandler $transactionStateHandler;
 
-    private ConfigHandler $configHandler;
-
-    private createIvyOrderData $createIvyOrderData;
-
     private EntityRepositoryInterface $orderRepository;
 
     private IvyLogger $logger;
 
-    private ApiClient $apiClient;
-
-    private ExpressController $expressController;
+    private ExpressService $expressService;
 
     /**
      * @param OrderTransactionStateHandler $transactionStateHandler
      * @param EntityRepositoryInterface $orderRepository
-     * @param createIvyOrderData $createIvyOrderData
-     * @param ConfigHandler $configHandler
-     * @param ApiClient $apiClient
      * @param IvyLogger $logger
-     * @param ExpressController $expressController
+     * @param ExpressService $expressService
      */
     public function __construct(
         OrderTransactionStateHandler $transactionStateHandler,
         EntityRepositoryInterface $orderRepository,
-        createIvyOrderData $createIvyOrderData,
-        ConfigHandler $configHandler,
-        ApiClient $apiClient,
         IvyLogger $logger,
-        ExpressController $expressController,
+        ExpressService $expressService
     ) {
         $this->transactionStateHandler = $transactionStateHandler;
         $this->orderRepository = $orderRepository;
-        $this->createIvyOrderData = $createIvyOrderData;
-        $this->configHandler = $configHandler;
 
         $this->logger = $logger;
-        $this->apiClient = $apiClient;
-        $this->expressController = $expressController;
+        $this->expressService = $expressService;
     }
 
     /**
@@ -90,23 +65,36 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
      */
     public function pay(AsyncPaymentTransactionStruct $transaction, RequestDataBag $dataBag, SalesChannelContext $salesChannelContext): RedirectResponse
     {
-        if ($dataBag->get('express', false) === true) {
-            // pseudo pay: immediately return url to finalize transaction
-            $returnUrl = $transaction->getReturnUrl();
-            $returnUrl = \str_replace('///', '//', $returnUrl);
+        $this->logger->debug('!called pay!' . print_r($dataBag, true));
+
+        $returnUrl = $transaction->getReturnUrl();
+        $returnUrl = \str_replace('///', '//', $returnUrl);
+        $contextToken = $this->getToken($returnUrl);
+        $this->logger->debug('contextToken: '.$contextToken);
+
+        $paymentDetails = $dataBag->get('paymentDetails');
+        if (!empty($paymentDetails) && !empty($paymentDetails->get('confirmed'))) {
+            //Checkoutsession already existing just return
+            $this->logger->info('pseudo pay: immediately return url to finalize transaction');
             return new RedirectResponse($returnUrl);
+        } else {
+            $this->logger->info('checkout needs to be created');
+            try {
+                $order = $this->getOrderById($dataBag->get('orderId'), $salesChannelContext);
+                $returnUrl = $this->expressService->createCheckoutSession(
+                    $contextToken,
+                    $salesChannelContext,
+                    false,
+                    $order
+                );
+                return new RedirectResponse($returnUrl);
+            } catch (\Exception $e) {
+                throw new AsyncPaymentProcessException(
+                    $transaction->getOrderTransaction()->getId(),
+                    'An error occurred during the communication with external payment gateway' . \PHP_EOL . $e->getMessage()
+                );
+            }    
         }
-
-        try {
-            $response = $this->expressController->checkoutStart($dataBag, $salesChannelContext);
-        } catch (\Exception $e) {
-            throw new AsyncPaymentProcessException(
-                $transaction->getOrderTransaction()->getId(),
-                'An error occurred during the communication with external payment gateway' . \PHP_EOL . $e->getMessage()
-            );
-        }
-
-        return new RedirectResponse($response['redirectUrl']);
     }
 
     /**
@@ -184,13 +172,12 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
     }
 
     /**
-     * @return mixed|null
+     * @return OrderEntity|null
      */
-    private function getOrderData(OrderEntity $order, SalesChannelContext $salesChannelContext)
+    private function getOrderById(string $id, SalesChannelContext $salesChannelContext): OrderEntity
     {
         $criteria = (new Criteria())
-            ->addFilter(new EqualsFilter('id', $order->getId()))
-            ->addFilter(new EqualsFilter('versionId', $order->getVersionId()))
+            ->addFilter(new EqualsFilter('id', $id))
             ->addAssociation('transactions.paymentMethod')
             ->addAssociation('deliveries.shippingMethod')
             ->addAssociation('orderCustomer.customer')
