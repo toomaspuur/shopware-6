@@ -79,7 +79,7 @@ class ExpressController extends StorefrontController
     private function _checkoutStart(Request $request, SalesChannelContext $salesChannelContext, bool $express): Response
     {
         $this->logger->setLevel($this->configHandler->getLogLevel($salesChannelContext));
-        $this->logger->info('-- create session -- express: '.$express);
+        $this->logger->info('-- create session -- express: ' . $express);
         $salesChannelContext = $this->expressService->switchPaymentMethod($salesChannelContext);
         $data = [];
         try {
@@ -142,10 +142,10 @@ class ExpressController extends StorefrontController
                                 $contextToken,
                                 $salesChannelContext
                             );
-                            $customerData = \json_decode((string)$storeApiResponse->getContent(), true);
-                            if ((string)($customerData['email'] ?? '') === '') {
+                            $customerData = \json_decode((string) $storeApiResponse->getContent(), true);
+                            if ((string) ($customerData['email'] ?? '') === '') {
                                 $message = 'can not create customer. Status code: ' . $storeApiResponse->getStatusCode(
-                                    ) . ' body: ' . $storeApiResponse->getContent();
+                                ) . ' body: ' . $storeApiResponse->getContent();
                                 throw new IvyException($message);
                             }
                             $this->logger->info('created customer: ' . $customerData['email']);
@@ -196,7 +196,7 @@ class ExpressController extends StorefrontController
 
                 $discount = $data['discount'] ?? null;
                 if (\is_array($discount) && isset($discount['voucher'])) {
-                    $voucherCode = (string)$discount['voucher'];
+                    $voucherCode = (string) $discount['voucher'];
                     try {
                         $this->expressService->addPromotion($voucherCode, $salesChannelContext, $outputData);
                     } catch (\Exception $e) {
@@ -225,7 +225,7 @@ class ExpressController extends StorefrontController
 
         \ini_set('serialize_precision', '-1');
         $response = new IvyJsonResponse($outputData);
-        $signature = $this->expressService->sign((string)$response->getContent(), $salesChannelContext);
+        $signature = $this->expressService->sign((string) $response->getContent(), $salesChannelContext);
 
         $response->headers->set('X-Ivy-Signature', $signature);
         $this->logger->info('output body:' . $response->getContent());
@@ -273,7 +273,7 @@ class ExpressController extends StorefrontController
                         'displayId' => $existingOrder->getOrderNumber(),
                         'metadata' => $payload['metadata'],
                     ]);
-                    $signature = $this->expressService->sign(\stripslashes((string)$response->getContent()), $salesChannelContext);
+                    $signature = $this->expressService->sign(\stripslashes((string) $response->getContent()), $salesChannelContext);
                     $response->headers->set('X-Ivy-Signature', $signature);
                     return $response;
                 }
@@ -325,7 +325,7 @@ class ExpressController extends StorefrontController
 
         \ini_set('serialize_precision', '-1');
         $response = new IvyJsonResponse($outputData);
-        $signature = $this->expressService->sign(\stripslashes((string)$response->getContent()), $salesChannelContext);
+        $signature = $this->expressService->sign(\stripslashes((string) $response->getContent()), $salesChannelContext);
         if ($errorStatus !== null) {
             $response->setStatusCode($errorStatus);
         }
@@ -345,7 +345,7 @@ class ExpressController extends StorefrontController
             $ivyOrderId = $request->get('order-id');
             $this->logger->setLevel($this->configHandler->getLogLevel($salesChannelContext));
             $this->logger->debug('finish action reference: ' . $referenceId);
-            $this->logger->debug('order-id '. $ivyOrderId);
+            $this->logger->debug('order-id ' . $ivyOrderId);
 
             $existingOrder = $this->expressService->getIvyOrderByReference($referenceId);
 

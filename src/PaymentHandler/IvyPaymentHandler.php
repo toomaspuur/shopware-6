@@ -34,6 +34,7 @@ use WizmoGmbh\IvyPayment\Core\IvyPayment\createIvyOrderData;
 use WizmoGmbh\IvyPayment\Exception\IvyApiException;
 use WizmoGmbh\IvyPayment\IvyApi\ApiClient;
 use WizmoGmbh\IvyPayment\Logger\IvyLogger;
+use WizmoGmbh\IvyPayment\Express\Controller\ExpressController;
 
 
 class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
@@ -50,6 +51,8 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
 
     private ApiClient $apiClient;
 
+    private ExpressController $expressController;
+
     /**
      * @param OrderTransactionStateHandler $transactionStateHandler
      * @param EntityRepositoryInterface $orderRepository
@@ -57,6 +60,7 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
      * @param ConfigHandler $configHandler
      * @param ApiClient $apiClient
      * @param IvyLogger $logger
+     * @param ExpressController $expressController
      */
     public function __construct(
         OrderTransactionStateHandler $transactionStateHandler,
@@ -64,7 +68,8 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
         createIvyOrderData $createIvyOrderData,
         ConfigHandler $configHandler,
         ApiClient $apiClient,
-        IvyLogger $logger
+        IvyLogger $logger,
+        ExpressController $expressController,
     ) {
         $this->transactionStateHandler = $transactionStateHandler;
         $this->orderRepository = $orderRepository;
@@ -73,6 +78,7 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
 
         $this->logger = $logger;
         $this->apiClient = $apiClient;
+        $this->expressController = $expressController;
     }
 
     /**
@@ -91,14 +97,8 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
             return new RedirectResponse($returnUrl);
         }
 
-        $redirectUrl = '';
-        // Method that sends the return URL to the external gateway and gets a redirect URL back
         try {
-            $response = $this->createCheckoutSession($transaction, $salesChannelContext);
-
-            if (\is_array($response) && !empty($response['redirectUrl'])) {
-                $redirectUrl = $response['redirectUrl'];
-            }
+            $response = $this->expressController->checkoutStart($dataBag, $salesChannelContext);
         } catch (\Exception $e) {
             throw new AsyncPaymentProcessException(
                 $transaction->getOrderTransaction()->getId(),
@@ -106,8 +106,7 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
             );
         }
 
-        // Redirect to external gateway
-        return new RedirectResponse($redirectUrl);
+        return new RedirectResponse($response['redirectUrl']);
     }
 
     /**
@@ -174,48 +173,6 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
             default:
                 break;
         }
-    }
-
-    /**
-     * @param AsyncPaymentTransactionStruct $transaction
-     * @param SalesChannelContext $salesChannelContext
-     * @return array|false
-     * @throws Exception
-     * @throws IvyApiException
-     *
-     * @return false|mixed
-     * @psalm-suppress PossiblyNullArgument
-     * @psalm-suppress PossiblyUndefinedVariable
-     */
-    private function createCheckoutSession(AsyncPaymentTransactionStruct $transaction, SalesChannelContext $salesChannelContext)
-    {
-        $this->logger->setLevel($this->configHandler->getLogLevel($salesChannelContext));
-        $this->logger->info('create normal ivy session');
-        $config = $this->configHandler->getFullConfig($salesChannelContext);
-
-        $encoders = [new XmlEncoder(), new JsonEncoder()];
-        $normalizers = [new CustomObjectNormalizer()];
-        $serializer = new Serializer($normalizers, $encoders);
-
-        $order = $transaction->getOrder();
-
-        if ($order->getBillingAddress() === null || $order->getCurrency() === null) {
-            $order = $this->getOrderData($order, $salesChannelContext);
-        }
-
-        $data = $this->createIvyOrderData->getSessionCreateDataFromOrder($order, $config);
-        $returnUrl = $transaction->getReturnUrl();
-        $returnUrl = \str_replace('///', '//', $returnUrl);
-        $token = $this->getToken($returnUrl);
-        $this->logger->info('found token ' . $token);
-        if ($token !== null) {
-            $data->setMetadata(['_sw_payment_token' => $token]);
-            $data->setVerificationToken($token);
-            $jsonContent = $serializer->serialize($data, 'json');
-            return $this->apiClient->sendApiRequest('checkout/session/create', $config, $jsonContent);
-        }
-
-        return false;
     }
 
     private function getToken(string $returnUrl): ?string
