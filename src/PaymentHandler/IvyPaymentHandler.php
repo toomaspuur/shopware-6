@@ -24,7 +24,7 @@ use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use WizmoGmbh\IvyPayment\Logger\IvyLogger;
-use WizmoGmbh\IvyPayment\Express\Service\ExpressService;
+use WizmoGmbh\IvyPayment\Core\IvyPayment\IvyCheckoutSession;
 
 
 class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
@@ -37,23 +37,25 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
 
     private ExpressService $expressService;
 
+    private IvyCheckoutSession $ivyCheckoutSession;
+
     /**
      * @param OrderTransactionStateHandler $transactionStateHandler
      * @param EntityRepositoryInterface $orderRepository
      * @param IvyLogger $logger
-     * @param ExpressService $expressService
+     * @param IvyCheckoutSession $ivyCheckoutSession
      */
     public function __construct(
         OrderTransactionStateHandler $transactionStateHandler,
         EntityRepositoryInterface $orderRepository,
         IvyLogger $logger,
-        ExpressService $expressService
+        IvyCheckoutSession $ivyCheckoutSession
     ) {
         $this->transactionStateHandler = $transactionStateHandler;
         $this->orderRepository = $orderRepository;
 
         $this->logger = $logger;
-        $this->expressService = $expressService;
+        $this->ivyCheckoutSession = $ivyCheckoutSession;
     }
 
     /**
@@ -81,7 +83,7 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
             $this->logger->info('checkout needs to be created');
             try {
                 $order = $this->getOrderById($dataBag->get('orderId'), $salesChannelContext);
-                $returnUrl = $this->expressService->createCheckoutSession(
+                $returnUrl = $this->ivyCheckoutSession->createCheckoutSession(
                     $contextToken,
                     $salesChannelContext,
                     false,

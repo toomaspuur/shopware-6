@@ -3,6 +3,7 @@
 namespace WizmoGmbh\IvyPayment\Express\Controller;
 
 use Shopware\Core\Checkout\Cart\Exception\InvalidCartException;
+use Shopware\Core\Checkout\Cart\SalesChannel\CartService;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\Framework\Validation\Exception\ConstraintViolationException;
 use Shopware\Core\PlatformRequest;
@@ -18,6 +19,7 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Validator\ConstraintViolationInterface;
 use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
 use WizmoGmbh\IvyPayment\Components\IvyJsonResponse;
+use WizmoGmbh\IvyPayment\Core\IvyPayment\IvyCheckoutSession;
 use WizmoGmbh\IvyPayment\Exception\IvyException;
 use WizmoGmbh\IvyPayment\Express\Service\ExpressService;
 use WizmoGmbh\IvyPayment\Logger\IvyLogger;
@@ -40,6 +42,10 @@ class ExpressController extends StorefrontController
 
     private array $errors = [];
 
+    private IvyCheckoutSession $ivyCheckoutSession;
+
+    private CartService $cartService;
+
     /**
      * @param ExpressService $expressService
      * @param ConfigHandler $configHandler
@@ -51,13 +57,17 @@ class ExpressController extends StorefrontController
         ExpressService $expressService,
         ConfigHandler $configHandler,
         GenericPageLoaderInterface $genericLoader,
-        IvyLogger $logger
+        IvyLogger $logger,
+        IvyCheckoutSession $ivyCheckoutSession,
+        CartService $cartService
     )
     {
         $this->expressService = $expressService;
         $this->configHandler = $configHandler;
         $this->logger = $logger;
         $this->genericLoader = $genericLoader;
+        $this->ivyCheckoutSession = $ivyCheckoutSession;
+        $this->cartService = $cartService;
     }
 
     /**
@@ -81,9 +91,11 @@ class ExpressController extends StorefrontController
         $this->logger->setLevel($this->configHandler->getLogLevel($salesChannelContext));
         $this->logger->info('-- create session -- express: ' . $express);
         $salesChannelContext = $this->expressService->switchPaymentMethod($salesChannelContext);
+        $token = $salesChannelContext->getToken();
+        $cart = $this->cartService->getCart($token, $salesChannelContext);
         $data = [];
         try {
-            $redirectUrl = $this->expressService->createCheckoutSession($contextToken, $salesChannelContext, $express);
+            $redirectUrl = $this->ivyCheckoutSession->createCheckoutSession($contextToken, $salesChannelContext, $express, null, $cart);
             $this->logger->info('redirect to ' . $redirectUrl);
             $data['success'] = true;
             $data['redirectUrl'] = $redirectUrl;

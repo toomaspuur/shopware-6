@@ -26,6 +26,8 @@
             <argument type="service" id="WizmoGmbh\IvyPayment\Components\Config\ConfigHandler"/>
             <argument type="service" id="Shopware\Storefront\Page\GenericPageLoader"/>
             <argument type="service" id="hcou.ivypayment.logger.payment_logger"/>
+            <argument type="service" id="WizmoGmbh\IvyPayment\Core\IvyPayment\IvyCheckoutSession"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\SalesChannel\CartService"/>
             <call method="setContainer">
                 <argument id="service_container" type="service"/>
             </call>

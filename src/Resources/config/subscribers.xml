@@ -17,7 +17,7 @@
             <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
             <argument type="service" id="order.repository"/>
             <argument type="service" id="hcou.ivypayment.logger.payment_logger"/>
-            <argument type="service" id="wizmo_gmbh.ivy_payment.express.service.express_service"/>
+            <argument type="service" id="WizmoGmbh\IvyPayment\Core\IvyPayment\IvyCheckoutSession"/>
             <tag name="shopware.payment.method.async" />
         </service>
 

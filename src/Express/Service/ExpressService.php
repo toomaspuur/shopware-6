@@ -261,57 +261,6 @@ class ExpressService
         );
     }
 
-
-    /**
-     * @param string $contextToken
-     * @param SalesChannelContext $salesChannelContext
-     * @param bool $express
-     * @param OrderEntity|null $order
-     * @return string
-     * @throws Exception
-     * @throws IvyApiException
-     */
-    public function createCheckoutSession(string $contextToken, SalesChannelContext $salesChannelContext, bool $express, OrderEntity $order = null): string
-    {
-        $config = $this->configHandler->getFullConfig($salesChannelContext);
-        $token = $salesChannelContext->getToken();
-        $cart = $this->cartService->getCart($token, $salesChannelContext);
-
-        if ($order) {
-            $ivySessionData = $this->createIvyOrderData->getSessionCreateDataFromOrder($order, $config);
-            $referenceId = $order->getId();
-        } else {
-            $ivySessionData = $this->createIvyOrderData->getIvySessionDataFromCart(
-                $cart,
-                $salesChannelContext,
-                $config,
-                $express,
-                $express
-            );
-            $referenceId = Uuid::randomHex();
-        }
-
-        $ivySessionData->setReferenceId($referenceId);
-
-        //Add the token as sw-context and payment-token
-        $ivySessionData->setMetadata([
-            PlatformRequest::HEADER_CONTEXT_TOKEN => $contextToken,
-            '_sw_payment_token' => $contextToken,
-        ]);
-        // add plugin version as string to know whether to redirect to confirmation page after ivy checkout
-        $ivySessionData->setPlugin('sw6-' . $this->version);
-
-        $jsonContent = $this->serializer->serialize($ivySessionData, 'json');
-        $response = $this->ivyApiClient->sendApiRequest('checkout/session/create', $config, $jsonContent);
-
-
-        if (empty($response['redirectUrl'])) {
-            throw new IvyApiException('cannot obtain ivy redirect url');
-        }
-
-        return $response['redirectUrl'];
-    }
-
     public function getIvyOrderByReference(string $referenceId): ?OrderEntity
     {
         $context = Context::createDefaultContext();
