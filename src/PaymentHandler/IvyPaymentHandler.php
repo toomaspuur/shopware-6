@@ -35,8 +35,6 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
 
     private IvyLogger $logger;
 
-    private ExpressService $expressService;
-
     private IvyCheckoutSession $ivyCheckoutSession;
 
     /**
