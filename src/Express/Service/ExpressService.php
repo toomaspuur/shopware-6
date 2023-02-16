@@ -532,42 +532,11 @@ class ExpressService
         $orderData['_sw_payment_token'] = $paymentToken;
 
         $this->logger->info('update ivy order with new referenceId: ' . $orderData['id']);
-        $this->updateOrderReference($orderData['id'], $referenceId, $contextToken, $salesChannelContext);
 
         return $orderData;
     }
 
-    /**
-     * @param string $newReferenceId
-     * @param string $ivyOrderId
-     * @param string $contextToken
-     * @param SalesChannelContext $salesChannelContext
-     * @return void
-     * @throws Exception
-     */
-    public function updateOrderReference(
-        string $newReferenceId,
-        string $ivyOrderId,
-        string $contextToken,
-        SalesChannelContext $salesChannelContext
-    ): void {
-        $config = $this->configHandler->getFullConfig($salesChannelContext);
-        $jsonContent = \json_encode([
-            'id'          => $ivyOrderId,
-            'referenceId' => $newReferenceId,
-            'metadata'    => [
-                PlatformRequest::HEADER_CONTEXT_TOKEN => $contextToken
-            ]
-        ]);
-        $this->logger->debug('update ivy order: ' . print_r($jsonContent, true));
-        try {
-            $this->ivyApiClient->sendApiRequest('order/update', $config, $jsonContent);
-        } catch (\Exception $e) {
-            $this->logger->error('can not update ivy order: ' . $e->getMessage());
-        }
-    }
-
-    /**
+     /**
      * @param string $orderId
      * @param SalesChannelContext $salesChannelContext
      * @return OrderEntity

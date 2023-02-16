@@ -37,8 +37,6 @@ use WizmoGmbh\IvyPayment\PaymentHandler\IvyPaymentHandler;
 
 class IvyPaymentService
 {
-    private PaymentTransactionChainProcessor $paymentProcessor;
-
     private TokenFactoryInterfaceV2 $tokenFactory;
 
     private EntityRepositoryInterface $paymentMethodRepository;
@@ -52,7 +50,6 @@ class IvyPaymentService
     private LoggerInterface $logger;
 
     public function __construct(
-        PaymentTransactionChainProcessor $paymentProcessor,
         TokenFactoryInterfaceV2 $tokenFactory,
         EntityRepositoryInterface $paymentMethodRepository,
         PaymentHandlerRegistry $paymentHandlerRegistry,
@@ -60,7 +57,6 @@ class IvyPaymentService
         OrderTransactionStateHandler $transactionStateHandler,
         LoggerInterface $logger
     ) {
-        $this->paymentProcessor = $paymentProcessor;
         $this->tokenFactory = $tokenFactory;
         $this->paymentMethodRepository = $paymentMethodRepository;
         $this->paymentHandlerRegistry = $paymentHandlerRegistry;
@@ -101,49 +97,6 @@ class IvyPaymentService
             $token->setException($e);
         } catch (PaymentProcessException $e) {
             $token = $this->tokenFactory->parseToken($paymentToken);
-            $this->logger->error('An error occurred during finalizing async payment', ['orderTransactionId' => $transactionId, 'exceptionMessage' => $e->getMessage()]);
-            $this->transactionStateHandler->fail($transactionId, $context->getContext());
-            $token->setException($e);
-        } finally {
-            //todo
-        }
-
-        return $token;
-    }
-
-    /**
-     * @throws AsyncPaymentFinalizeException
-     * @throws InvalidTransactionException
-     * @throws TokenExpiredException
-     * @throws UnknownPaymentMethodException
-     *
-     * @psalm-suppress PossiblyNullArgument
-     */
-    public function finalizeTransaction(string $paymentToken, Request $request, SalesChannelContext $context): TokenStruct
-    {
-        $token = $this->tokenFactory->parseToken($paymentToken);
-
-        $transactionId = $token->getTransactionId();
-
-        if ($transactionId === null || !Uuid::isValid($transactionId)) {
-            throw new AsyncPaymentProcessException((string) $transactionId, "Payment JWT didn't contain a valid orderTransactionId");
-        }
-
-        $transaction = $this->getPaymentTransactionStruct($transactionId, $context->getContext());
-
-        /** @var IvyPaymentHandler|null $paymentHandler */
-        $paymentHandler = $this->getPaymentHandlerById($token->getPaymentMethodId(), $context->getContext());
-
-        if ($paymentHandler === null) {
-            throw new UnknownPaymentMethodException($token->getPaymentMethodId());
-        }
-
-        try {
-            $paymentHandler->finalize($transaction, $request, $context);
-        } catch (CustomerCanceledAsyncPaymentException $e) {
-            $this->transactionStateHandler->cancel($transactionId, $context->getContext());
-            $token->setException($e);
-        } catch (PaymentProcessException $e) {
             $this->logger->error('An error occurred during finalizing async payment', ['orderTransactionId' => $transactionId, 'exceptionMessage' => $e->getMessage()]);
             $this->transactionStateHandler->fail($transactionId, $context->getContext());
             $token->setException($e);

@@ -34,8 +34,6 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
-use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
-use WizmoGmbh\IvyPayment\IvyApi\ApiClient;
 use WizmoGmbh\IvyPayment\Logger\IvyLogger;
 use WizmoGmbh\IvyPayment\Services\IvyPaymentService;
 use WizmoGmbh\IvyPayment\Express\Service\ExpressService;
@@ -45,15 +43,7 @@ class IvyPaymentController extends StorefrontController
 {
     private IvyPaymentService $paymentService;
 
-    private OrderConverter $orderConverter;
-
     private TokenFactoryInterfaceV2 $tokenFactoryInterfaceV2;
-
-    private EntityRepositoryInterface $orderRepository;
-
-    private ConfigHandler $configHandler;
-
-    private ApiClient $ivyApiClient;
 
     private IvyLogger $logger;
 
@@ -61,30 +51,18 @@ class IvyPaymentController extends StorefrontController
 
     /**
      * @param IvyPaymentService $paymentService
-     * @param OrderConverter $orderConverter
      * @param TokenFactoryInterfaceV2 $tokenFactoryInterfaceV2
-     * @param EntityRepositoryInterface $orderRepository
-     * @param ConfigHandler $configHandler
-     * @param ApiClient $ivyApiClient
      * @param IvyLogger $logger
      * @param ExpressService $expressService
      */
     public function __construct(
         IvyPaymentService $paymentService,
-        OrderConverter $orderConverter,
         TokenFactoryInterfaceV2 $tokenFactoryInterfaceV2,
-        EntityRepositoryInterface $orderRepository,
-        ConfigHandler $configHandler,
-        ApiClient $ivyApiClient,
         IvyLogger $logger,
         ExpressService $expressService
     ) {
         $this->paymentService = $paymentService;
-        $this->orderConverter = $orderConverter;
         $this->tokenFactoryInterfaceV2 = $tokenFactoryInterfaceV2;
-        $this->orderRepository = $orderRepository;
-        $this->configHandler = $configHandler;
-        $this->ivyApiClient = $ivyApiClient;
         $this->logger = $logger;
         $this->expressService = $expressService;
     }
@@ -108,7 +86,6 @@ class IvyPaymentController extends StorefrontController
         $order = $this->expressService->getIvyOrderByReference($referenceId);
 
         if ($order !== null) {
-            $this->finalizeTransaction($request, 'failed');
             $finishUrl = '/account/order/edit/' . $order->getId() . '?error-code=CHECKOUT__UNKNOWN_ERROR';
         }
 
@@ -207,85 +184,6 @@ class IvyPaymentController extends StorefrontController
      */
     public function finalizeTransaction(Request $request, string $status = 'final'): Response
     {
-        $paymentToken = $request->get('_sw_payment_token');
-        $context = Context::createDefaultContext();
-
-        if ($paymentToken === null) {
-            throw new MissingRequestParameterException('_sw_payment_token');
-        }
-
-        $salesChannelContext = $this->assembleSalesChannelContext($paymentToken);
-
-        $result = $this->paymentService->finalizeTransaction(
-            $paymentToken,
-            $request,
-            $salesChannelContext
-        );
-
-        $response = $this->handleException($result);
-        if ($response !== null) {
-            return $response;
-        }
-
-        $finishUrl = $result->getFinishUrl();
-        if ($finishUrl) {
-            return new RedirectResponse($finishUrl);
-        }
-
-        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
-    }
-
-    /**
-     * @psalm-suppress PossiblyNullArgument
-     */
-    private function handleException(TokenStruct $token): ?Response
-    {
-        if ($token->getException() === null) {
-            return null;
-        }
-
-        if ($token->getErrorUrl() === null) {
-            return null;
-        }
-
-        $url = $token->getErrorUrl();
-
-        $exception = $token->getException();
-        if ($exception instanceof ShopwareException) {
-            $this->logger->error($exception->getMessage());
-
-            return new RedirectResponse(
-                $url . (\parse_url($url, \PHP_URL_QUERY) ? '&' : '?') . 'error-code=' . $exception->getErrorCode()
-            );
-        }
-
-        return new RedirectResponse($url);
-    }
-
-    /**
-     * @psalm-suppress PossiblyInvalidArgument
-     */
-    private function assembleSalesChannelContext(string $paymentToken): SalesChannelContext
-    {
-        $context = Context::createDefaultContext();
-
-        $transactionId = $this->tokenFactoryInterfaceV2->parseToken($paymentToken)->getTransactionId();
-        if ($transactionId === null) {
-            throw new InvalidTokenException($paymentToken);
-        }
-
-        $criteria = new Criteria();
-        $criteria->addFilter(new EqualsFilter('transactions.id', $transactionId));
-        $criteria->addAssociation('transactions');
-        $criteria->addAssociation('orderCustomer');
-
-        /** @var OrderEntity|null $order */
-        $order = $this->orderRepository->search($criteria, $context)->first();
-
-        if ($order === null) {
-            throw new InvalidTokenException($paymentToken);
-        }
-
-        return $this->orderConverter->assembleSalesChannelContext($order, $context);
+        return $this->redirectToRoute('frontend.ivyexpress.finish', $request->query->all());
     }
 }

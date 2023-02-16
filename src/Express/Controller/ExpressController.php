@@ -282,6 +282,7 @@ class ExpressController extends StorefrontController
                     $this->logger->info('order existing');
                     $response = new IvyJsonResponse([
                         'redirectUrl' => $finishUrl,
+                        'referenceId' => $referenceId,
                         'displayId' => $existingOrder->getOrderNumber(),
                         'metadata' => $payload['metadata'],
                     ]);
@@ -320,6 +321,7 @@ class ExpressController extends StorefrontController
                 $outputData = [
                     'redirectUrl' => $finishUrl,
                     'displayId' => $orderData['orderNumber'],
+                    'referenceId' => $orderData['id'],
                     'metadata' => [
                         '_sw_payment_token' => $orderData['_sw_payment_token'],
                     ]
