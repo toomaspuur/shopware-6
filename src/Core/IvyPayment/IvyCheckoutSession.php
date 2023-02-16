@@ -13,6 +13,8 @@ use Shopware\Core\Framework\Plugin\PluginEntity;
 use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\PlatformRequest;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
+use Shopware\Storefront\Framework\Routing\Router;
+use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Serializer\Encoder\XmlEncoder;
 use Symfony\Component\Serializer\Serializer;
@@ -32,13 +34,17 @@ class IvyCheckoutSession
 
     private string $version;
 
+    private RouterInterface $router;
+
     public function __construct(
         EntityRepositoryInterface $pluginRepository,
         ConfigHandler $configHandler,
         createIvyOrderData $createIvyOrderData,
-        ApiClient $ivyApiClient
+        ApiClient $ivyApiClient,
+        RouterInterface $router
     ) {
         $this->configHandler = $configHandler;
+        $this->router = $router;
         $this->createIvyOrderData = $createIvyOrderData;
         $this->ivyApiClient = $ivyApiClient;
         $encoders = [new XmlEncoder(), new JsonEncoder()];
@@ -80,6 +86,16 @@ class IvyCheckoutSession
         }
 
         $ivySessionData->setReferenceId($referenceId);
+
+        $quoteCallbackUrl = $this->router->generate('frontend.ivyexpress.callback', [], Router::ABSOLUTE_URL);
+        $successCallbackUrl = $this->router->generate('frontend.ivypayment.finalize.transaction', [], Router::ABSOLUTE_URL);
+        $errorCallbackUrl = $this->router->generate('frontend.ivypayment.failed.transaction', [], Router::ABSOLUTE_URL);
+        $completeCallbackUrl = $this->router->generate('frontend.ivyexpress.confirm', [], Router::ABSOLUTE_URL);
+
+        $ivySessionData->setSuccessCallbackUrl($successCallbackUrl);
+        $ivySessionData->setErrorCallbackUrl($errorCallbackUrl);
+        $ivySessionData->setQuoteCallbackUrl($quoteCallbackUrl);
+        $ivySessionData->setCompleteCallbackUrl($completeCallbackUrl);
 
         //Add the token as sw-context and payment-token
         $ivySessionData->setMetadata([

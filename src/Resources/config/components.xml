@@ -24,6 +24,7 @@
             <argument type="service" id="WizmoGmbh\IvyPayment\Components\Config\ConfigHandler"/>
             <argument type="service" id="WizmoGmbh\IvyPayment\Core\IvyPayment\createIvyOrderData"/>
             <argument type="service" id="wizmo_gmbh.ivy_payment.ivy_api.api_client"/>
+            <argument type="service" id="router"/>
         </service>
 
     </services>
