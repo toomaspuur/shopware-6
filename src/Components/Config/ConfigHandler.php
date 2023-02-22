@@ -22,11 +22,11 @@ class ConfigHandler
     private const FULL_PLUGIN_CONFIG = 'WizmoGmbhIvyPayment.config';
     public const MCC_DEFAULT = '5712';
     public const PROD_API_URL = 'https://api.getivy.de/api/service/';
-    public const SAND_API_URL = 'https://api.sand.getivy.de/api/service/';
+    public const SAND_API_URL = 'https://api.dev.getivy.de/api/service/';
     public const PROD_BANNER_URL = 'https://cdn.getivy.de/banner.js';
-    public const SAND_BANNER_URL = 'https://cdn.sand.getivy.de/banner.js';
+    public const SAND_BANNER_URL = 'https://cdn.dev.getivy.de/banner.js';
     public const PROD_BUTTON_URL = 'https://cdn.getivy.de/button.js';
-    public const SAND_BUTTON_URL = 'https://cdn.sand.getivy.de/button.js';
+    public const SAND_BUTTON_URL = 'https://cdn.dev.getivy.de/button.js';
 
 
     private ?array $config;
