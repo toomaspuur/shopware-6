@@ -300,6 +300,7 @@ class ExpressController extends StorefrontController
                 $this->logger->info('loaded context with token : ' . $salesChannelContext->getToken() . ' customerId: ' . $this->getCustomerIdFromContext($salesChannelContext));
 
                 if ($isExpress) {
+                    $contextToken = $this->expressService->setShippingMethod($payload, $contextToken, $salesChannelContext);
                     $this->expressService->updateUser($payload, $contextToken, $salesChannelContext);
                     $salesChannelContext = $this->expressService->reloadContext($salesChannelContext, $contextToken);
                 }
