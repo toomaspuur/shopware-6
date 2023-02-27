@@ -1,4 +1,4 @@
-# 1.1.26
+# 1.2.0
 
 - Refactoring and Performance Verbesserungen
 
