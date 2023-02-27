@@ -1,3 +1,7 @@
+# 1.1.26
+
+- Refactoring and Performance improvements
+
 # 1.1.25
 
 - Bug fixes
