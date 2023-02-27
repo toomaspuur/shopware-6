@@ -87,16 +87,6 @@ class IvyCheckoutSession
 
         $ivySessionData->setReferenceId($referenceId);
 
-        $quoteCallbackUrl = $this->router->generate('frontend.ivyexpress.callback', [], Router::ABSOLUTE_URL);
-        $successCallbackUrl = $this->router->generate('frontend.ivypayment.finalize.transaction', [], Router::ABSOLUTE_URL);
-        $errorCallbackUrl = $this->router->generate('frontend.ivypayment.failed.transaction', [], Router::ABSOLUTE_URL);
-        $completeCallbackUrl = $this->router->generate('frontend.ivyexpress.confirm', [], Router::ABSOLUTE_URL);
-
-        $ivySessionData->setSuccessCallbackUrl($successCallbackUrl);
-        $ivySessionData->setErrorCallbackUrl($errorCallbackUrl);
-        $ivySessionData->setQuoteCallbackUrl($quoteCallbackUrl);
-        $ivySessionData->setCompleteCallbackUrl($completeCallbackUrl);
-
         //Add the token as sw-context and payment-token
         $ivySessionData->setMetadata([
             PlatformRequest::HEADER_CONTEXT_TOKEN => $contextToken,
