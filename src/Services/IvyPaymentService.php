@@ -37,8 +37,6 @@ use WizmoGmbh\IvyPayment\PaymentHandler\IvyPaymentHandler;
 
 class IvyPaymentService
 {
-    private TokenFactoryInterfaceV2 $tokenFactory;
-
     private EntityRepositoryInterface $paymentMethodRepository;
 
     private PaymentHandlerRegistry $paymentHandlerRegistry;
@@ -50,14 +48,12 @@ class IvyPaymentService
     private LoggerInterface $logger;
 
     public function __construct(
-        TokenFactoryInterfaceV2 $tokenFactory,
         EntityRepositoryInterface $paymentMethodRepository,
         PaymentHandlerRegistry $paymentHandlerRegistry,
         EntityRepositoryInterface $orderTransactionRepository,
         OrderTransactionStateHandler $transactionStateHandler,
         LoggerInterface $logger
     ) {
-        $this->tokenFactory = $tokenFactory;
         $this->paymentMethodRepository = $paymentMethodRepository;
         $this->paymentHandlerRegistry = $paymentHandlerRegistry;
         $this->orderTransactionRepository = $orderTransactionRepository;
@@ -74,7 +70,7 @@ class IvyPaymentService
      * @psalm-suppress PossiblyNullArgument
      * @psalm-suppress DocblockTypeContradiction
      */
-    public function updateTransaction(string $paymentToken, string $transactionId, string $paymentMethodId, Request $request, SalesChannelContext $context): TokenStruct
+    public function updateTransaction(string $transactionId, string $paymentMethodId, Request $request, SalesChannelContext $context): void
     {
         if ($transactionId === null || !Uuid::isValid($transactionId)) {
             throw new AsyncPaymentProcessException((string) $transactionId, "No valid orderTransactionId was provided.");
@@ -92,19 +88,11 @@ class IvyPaymentService
         try {
             $paymentHandler->finalize($transaction, $request, $context);
         } catch (CustomerCanceledAsyncPaymentException $e) {
-            $token = $this->tokenFactory->parseToken($paymentToken);
             $this->transactionStateHandler->cancel($transactionId, $context->getContext());
-            $token->setException($e);
         } catch (PaymentProcessException $e) {
-            $token = $this->tokenFactory->parseToken($paymentToken);
             $this->logger->error('An error occurred during finalizing async payment', ['orderTransactionId' => $transactionId, 'exceptionMessage' => $e->getMessage()]);
             $this->transactionStateHandler->fail($transactionId, $context->getContext());
-            $token->setException($e);
-        } finally {
-            //todo
         }
-
-        return $token;
     }
 
     /**

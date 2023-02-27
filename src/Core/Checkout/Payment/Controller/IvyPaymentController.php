@@ -9,24 +9,14 @@ declare(strict_types=1);
 
 namespace WizmoGmbh\IvyPayment\Core\Checkout\Payment\Controller;
 
-use Shopware\Core\Checkout\Cart\Order\OrderConverter;
-use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Payment\Cart\Token\TokenFactoryInterfaceV2;
-use Shopware\Core\Checkout\Payment\Cart\Token\TokenStruct;
 use Shopware\Core\Checkout\Payment\Exception\AsyncPaymentFinalizeException;
 use Shopware\Core\Checkout\Payment\Exception\CustomerCanceledAsyncPaymentException;
-use Shopware\Core\Checkout\Payment\Exception\InvalidTokenException;
 use Shopware\Core\Checkout\Payment\Exception\InvalidTransactionException;
 use Shopware\Core\Checkout\Payment\Exception\TokenExpiredException;
 use Shopware\Core\Checkout\Payment\Exception\UnknownPaymentMethodException;
-use Shopware\Core\Framework\Context;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
-use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
-use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
 use Shopware\Core\Framework\Routing\Annotation\Since;
-use Shopware\Core\Framework\Routing\Exception\MissingRequestParameterException;
-use Shopware\Core\Framework\ShopwareException;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Storefront\Controller\StorefrontController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -135,7 +125,7 @@ class IvyPaymentController extends StorefrontController
             $this->logger->debug('webhook payload: ' . \print_r($payload, true));
 
             $referenceId = $payload['referenceId'];
-            $paymentToken = $payload['metadata']['_sw_payment_token'];
+            $paymentToken = $payload['metadata']['_sw_payment_token'] ?? null;
 
             if ($paymentToken === null) {
                 $order = $this->expressService->getIvyOrderByReference($referenceId);
@@ -160,7 +150,6 @@ class IvyPaymentController extends StorefrontController
             $this->logger->debug('set status to: ' . $payload['status'] . ' for referenceId: '.$referenceId);
 
             $this->paymentService->updateTransaction(
-                $paymentToken,
                 $transactionId,
                 $this->expressService->getPaymentMethodId(),
                 $request,
