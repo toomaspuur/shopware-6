@@ -19,8 +19,6 @@
         </service>
 
         <service id="WizmoGmbh\IvyPayment\Services\IvyPaymentService">
-            <argument type="service" id="Shopware\Core\Checkout\Payment\Cart\PaymentTransactionChainProcessor"/>
-            <argument type="service" id="Shopware\Core\Checkout\Payment\Cart\Token\JWTFactoryV2"/>
             <argument type="service" id="payment_method.repository"/>
             <argument type="service" id="Shopware\Core\Checkout\Payment\Cart\PaymentHandler\PaymentHandlerRegistry"/>
             <argument type="service" id="order_transaction.repository"/>
@@ -40,7 +38,6 @@
             <argument type="service" id="WizmoGmbh\IvyPayment\Components\Config\ConfigHandler"/>
             <argument type="service" id="router"/>
             <argument type="service" id="WizmoGmbh\IvyPayment\Core\IvyPayment\createIvyOrderData"/>
-            <argument type="service" id="wizmogmbh_ivypayment.repository"/>
             <argument type="service" id="sales_channel.country.repository"/>
             <argument type="service" id="wizmo_gmbh.ivy_payment.ivy_api.api_client"/>
             <argument type="service" id="Shopware\Core\System\SalesChannel\SalesChannel\SalesChannelContextSwitcher"/>

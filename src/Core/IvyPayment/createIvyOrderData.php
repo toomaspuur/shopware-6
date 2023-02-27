@@ -109,8 +109,6 @@ class createIvyOrderData
             $vat = $cartPrice->getCalculatedTaxes()->first()->getTax() - $shippingVat;
             $totalNet = $totalNet - $shippingNet;
             $shippingTotal = 0;
-            $shippingVat = 0;
-            $shippingNet = 0;
         } else {
             $total = $cartPrice->getTotalPrice();
             $vat = $cartPrice->getCalculatedTaxes()->first()->getTax();
@@ -129,15 +127,14 @@ class createIvyOrderData
         $ivyLineItems = $this->getLineItemFromCart($cart);
 
         $ivySessionData = new sessionCreate();
+        $ivySessionData->setExpress($isExpress);
 
         $ivySessionData
             ->setPrice($price)
             ->setLineItems($ivyLineItems);
 
         if ($isExpress) {
-            $ivySessionData
-                ->setExpress(true)
-                ->setHandshake(null);
+            $ivySessionData->setHandshake(null);
         } else {
             /** @var CustomerEntity $customer */
             $customer = $context->getCustomer();
@@ -162,7 +159,6 @@ class createIvyOrderData
             $shippingMethod = $this->getShippingMethodFromCart($cart, $context);
 
             $ivySessionData
-                ->setExpress(false)
                 ->setHandshake(true)
                 ->addShippingMethod($shippingMethod);
         }

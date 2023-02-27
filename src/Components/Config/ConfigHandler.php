@@ -36,60 +36,50 @@ class ConfigHandler
     private Connection $connection;
 
     /*
-
-        <input-field type="text">
-            <name>ProductionIvyApiUrl</name>
-            <label>Ivy Api Url</label>
-            <label lang="de-DE">Ivy Api Url</label>
-            <disabled>true</disabled>
-            <defaultValue>https://api.getivy.de/api/service/</defaultValue>
-        </input-field>
-
-
-        <input-field>
-            <name>SandboxIvyApiUrl</name>
-            <label>Ivy Api Sandbox Url</label>
-            <label lang="de-DE">Ivy Api Sandbox Url</label>
-            <disabled>true</disabled>
-            <defaultValue>https://api.sand.getivy.de/api/service/</defaultValue>
-        </input-field>
-
-        <input-field>
-            <name>ProductionIvyBannerUrl</name>
-            <label>Ivy Banner Url</label>
-            <label lang="de-DE">Ivy Banner Url</label>
-            <disabled>true</disabled>
-            <defaultValue>https://cdn.getivy.de/banner.js</defaultValue>
-        </input-field>
-
-
-        <input-field>
-            <name>SandboxIvyBannerUrl</name>
-            <label>Ivy Banner Sandbox Url</label>
-            <label lang="de-DE">Ivy Banner Sandbox Url</label>
-            <disabled>true</disabled>
-            <defaultValue>https://cdn.sand.getivy.de/banner.js</defaultValue>
-        </input-field>
-
-        <input-field type="text">
-            <name>ProductionIvyButtonUrl</name>
-            <label>Ivy Button Url</label>
-            <label lang="de-DE">Ivy Button Url</label>
-            <disabled>true</disabled>
-            <defaultValue>https://cdn.getivy.de/button.js</defaultValue>
-        </input-field>
-
-
-        <input-field type="text">
-            <name>SandboxIvyButtonUrl</name>
-            <label>Ivy Button Sandbox Url</label>
-            <label lang="de-DE">Ivy Button Sandbox Url</label>
-            <disabled>true</disabled>
-            <defaultValue>https://cdn.sand.getivy.de/button.js</defaultValue>
-        </input-field>
-
+    <input-field type="text">
+    <name>ProductionIvyApiUrl</name>
+    <label>Ivy Api Url</label>
+    <label lang="de-DE">Ivy Api Url</label>
+    <disabled>true</disabled>
+    <defaultValue>https://api.getivy.de/api/service/</defaultValue>
+    </input-field>
+    <input-field>
+    <name>SandboxIvyApiUrl</name>
+    <label>Ivy Api Sandbox Url</label>
+    <label lang="de-DE">Ivy Api Sandbox Url</label>
+    <disabled>true</disabled>
+    <defaultValue>https://api.sand.getivy.de/api/service/</defaultValue>
+    </input-field>
+    <input-field>
+    <name>ProductionIvyBannerUrl</name>
+    <label>Ivy Banner Url</label>
+    <label lang="de-DE">Ivy Banner Url</label>
+    <disabled>true</disabled>
+    <defaultValue>https://cdn.getivy.de/banner.js</defaultValue>
+    </input-field>
+    <input-field>
+    <name>SandboxIvyBannerUrl</name>
+    <label>Ivy Banner Sandbox Url</label>
+    <label lang="de-DE">Ivy Banner Sandbox Url</label>
+    <disabled>true</disabled>
+    <defaultValue>https://cdn.sand.getivy.de/banner.js</defaultValue>
+    </input-field>
+    <input-field type="text">
+    <name>ProductionIvyButtonUrl</name>
+    <label>Ivy Button Url</label>
+    <label lang="de-DE">Ivy Button Url</label>
+    <disabled>true</disabled>
+    <defaultValue>https://cdn.getivy.de/button.js</defaultValue>
+    </input-field>
+    <input-field type="text">
+    <name>SandboxIvyButtonUrl</name>
+    <label>Ivy Button Sandbox Url</label>
+    <label lang="de-DE">Ivy Button Sandbox Url</label>
+    <disabled>true</disabled>
+    <defaultValue>https://cdn.sand.getivy.de/button.js</defaultValue>
+    </input-field>
     */
-    public function __construct(SystemConfigService $configService, Connection  $connection)
+    public function __construct(SystemConfigService $configService, Connection $connection)
     {
         $this->configService = $configService;
         $this->connection = $connection;

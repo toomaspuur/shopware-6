@@ -9,12 +9,7 @@
         <!--***Controller***-->
         <service id="WizmoGmbh\IvyPayment\Core\Checkout\Payment\Controller\IvyPaymentController" public="true">
             <argument type="service" id="WizmoGmbh\IvyPayment\Services\IvyPaymentService"/>
-            <argument type="service" id="Shopware\Core\Checkout\Cart\Order\OrderConverter"/>
             <argument type="service" id="Shopware\Core\Checkout\Payment\Cart\Token\JWTFactoryV2"/>
-            <argument type="service" id="order.repository"/>
-            <argument type="service" id="wizmogmbh_ivypayment.repository"/>
-            <argument type="service" id="WizmoGmbh\IvyPayment\Components\Config\ConfigHandler"/>
-            <argument type="service" id="wizmo_gmbh.ivy_payment.ivy_api.api_client"/>
             <argument type="service" id="hcou.ivypayment.logger.payment_logger"/>
             <argument type="service" id="wizmo_gmbh.ivy_payment.express.service.express_service"/>
             <call method="setContainer">
@@ -27,6 +22,8 @@
             <argument type="service" id="WizmoGmbh\IvyPayment\Components\Config\ConfigHandler"/>
             <argument type="service" id="Shopware\Storefront\Page\GenericPageLoader"/>
             <argument type="service" id="hcou.ivypayment.logger.payment_logger"/>
+            <argument type="service" id="WizmoGmbh\IvyPayment\Core\IvyPayment\IvyCheckoutSession"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\SalesChannel\CartService"/>
             <call method="setContainer">
                 <argument id="service_container" type="service"/>
             </call>

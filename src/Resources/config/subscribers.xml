@@ -16,11 +16,8 @@
         <service id="WizmoGmbh\IvyPayment\PaymentHandler\IvyPaymentHandler">
             <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
             <argument type="service" id="order.repository"/>
-            <argument type="service" id="WizmoGmbh\IvyPayment\Core\IvyPayment\createIvyOrderData"/>
-            <argument type="service" id="wizmogmbh_ivypayment.repository"/>
-            <argument type="service" id="WizmoGmbh\IvyPayment\Components\Config\ConfigHandler"/>
-            <argument type="service" id="wizmo_gmbh.ivy_payment.ivy_api.api_client"/>
             <argument type="service" id="hcou.ivypayment.logger.payment_logger"/>
+            <argument type="service" id="WizmoGmbh\IvyPayment\Core\IvyPayment\IvyCheckoutSession"/>
             <tag name="shopware.payment.method.async" />
         </service>
 
