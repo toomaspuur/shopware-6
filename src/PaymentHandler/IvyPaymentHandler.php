@@ -16,6 +16,7 @@ use Shopware\Core\Checkout\Payment\Cart\AsyncPaymentTransactionStruct;
 use Shopware\Core\Checkout\Payment\Cart\PaymentHandler\AsynchronousPaymentHandlerInterface;
 use Shopware\Core\Checkout\Payment\Exception\AsyncPaymentProcessException;
 use Shopware\Core\Checkout\Payment\Exception\CustomerCanceledAsyncPaymentException;
+use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
@@ -54,6 +55,14 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
 
         $this->logger = $logger;
         $this->ivyCheckoutSession = $ivyCheckoutSession;
+    }
+
+    private function deleteOrder(OrderEntity $order): void {
+        //TODO: test if i switch status or select other payment methods, what happens
+        $this->logger->debug("!DELETE ORDER!");
+        $this->orderRepository->delete([
+            ['id' => $order->getId()],
+        ], Context::createDefaultContext());
     }
 
     /**
@@ -108,21 +117,18 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
 
         // Example check if the user cancelled. Might differ for each payment provider
         if ($request->query->getBoolean('cancel')) {
+            $this->logger->debug("customer cancel");
             throw new CustomerCanceledAsyncPaymentException(
                 $transactionId,
                 'Customer canceled the payment on the Ivy page'
             );
         }
 
-        // Example check for the actual status of the payment. Might differ for each payment provider
-        $paymentState = $request->query->getAlpha('status');
-        if (empty($paymentState)) {
-            /** @var array $payload */
-            $payload = $request->request->get('payload');
-            if ($payload !== null && isset($payload['status'])) {
-                $paymentState = $payload['status'];
-            }
-        }
+        /** @var array $payload */
+        $payload = $request->request->get('payload');
+        $paymentState = $payload['status'] ?? null;
+
+        $this->logger->debug("paymentState: $paymentState");
 
         $context = $salesChannelContext->getContext();
 
@@ -132,7 +138,12 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
                 break;
 
             case 'canceled':
-                $this->transactionStateHandler->cancel($transactionId, $context);
+                $state = $transaction->getOrderTransaction()->getStateMachineState()->getTechnicalName();
+                if($state === 'in_progress' || $state === 'open' || $state === 'cancel') {
+                    $this->deleteOrder($transaction->getOrder());
+                } else {
+                    $this->logger->debug("Order transaction in wrong state for cancel: $state");
+                }
                 break;
 
             case 'processing':
