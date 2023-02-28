@@ -130,7 +130,7 @@ class IvyPaymentController extends StorefrontController
 
             if ($paymentToken === null) {
                 $this->logger->error('payment token missing for referenceId: '.$referenceId);
-                return new JsonResponse(null, Response::HTTP_NOT_FOUND);
+                return new JsonResponse(null, Response::HTTP_OK);
             } else {
                 $this->logger->debug('payment token: '.$paymentToken);
                 try{
