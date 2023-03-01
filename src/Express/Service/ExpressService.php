@@ -266,7 +266,9 @@ class ExpressService
         $context = Context::createDefaultContext();
         $criteria = new Criteria();
         //TODO: add filter for payment method ivy and maybe paymentstatus
-        $criteria->addFilter(new EqualsFilter('id', $referenceId));
+        $criteria->addFilter(new EqualsFilter('id', $referenceId))
+            ->addAssociation('transactions.paymentMethod');
+        $criteria->getAssociation('transactions')->addSorting(new FieldSorting('createdAt'));
         return $this->orderRepository->search($criteria, $context)->first();
     }
 
