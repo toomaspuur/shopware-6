@@ -6,6 +6,7 @@ use Doctrine\DBAL\Exception;
 use Monolog\Logger;
 use Shopware\Core\Checkout\Cart\Exception\OrderNotFoundException;
 use Shopware\Core\Checkout\Cart\LineItem\LineItem;
+use Shopware\Core\Checkout\Cart\SalesChannel\AbstractCartOrderRoute;
 use Shopware\Core\Checkout\Cart\SalesChannel\CartService;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Promotion\Cart\PromotionItemBuilder;
@@ -20,8 +21,8 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Sorting\FieldSorting;
 use Shopware\Core\Framework\Plugin\PluginEntity;
-use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\Framework\Validation\DataBag\DataBag;
+use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\PlatformRequest;
 use Shopware\Core\System\SalesChannel\Context\SalesChannelContextServiceInterface;
 use Shopware\Core\System\SalesChannel\Context\SalesChannelContextServiceParameters;
@@ -34,15 +35,9 @@ use Shopware\Storefront\Framework\Routing\Router;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\RouterInterface;
-use Symfony\Component\Serializer\Encoder\JsonEncoder;
-use Symfony\Component\Serializer\Encoder\XmlEncoder;
-use Symfony\Component\Serializer\Serializer;
 use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
-use WizmoGmbh\IvyPayment\Components\CustomObjectNormalizer;
 use WizmoGmbh\IvyPayment\Core\IvyPayment\createIvyOrderData;
-use WizmoGmbh\IvyPayment\Exception\IvyApiException;
 use WizmoGmbh\IvyPayment\Exception\IvyException;
-use WizmoGmbh\IvyPayment\IvyApi\ApiClient;
 use WizmoGmbh\IvyPayment\PaymentHandler\IvyPaymentHandler;
 use function hash_hmac;
 use function json_decode;
@@ -65,10 +60,6 @@ class ExpressService
 
     private createIvyOrderData $createIvyOrderData;
 
-    private Serializer $serializer;
-
-    private ApiClient $ivyApiClient;
-
     private SalesChannelContextSwitcher $channelContextSwitcher;
 
     private SalesChannelContextServiceInterface $contextService;
@@ -87,6 +78,8 @@ class ExpressService
 
     private string $version;
 
+    private AbstractCartOrderRoute $orderRoute;
+
 
     /**
      * @param EntityRepositoryInterface $salesChannelRepo
@@ -94,12 +87,12 @@ class ExpressService
      * @param EntityRepositoryInterface $orderRepository
      * @param EntityRepositoryInterface $pluginRepository
      * @param CartService $cartService
+     * @param AbstractCartOrderRoute $orderRoute
      * @param SystemConfigService $systemConfigService
      * @param ConfigHandler $configHandler
      * @param RouterInterface $router
      * @param createIvyOrderData $createIvyOrderData
      * @param SalesChannelRepositoryInterface $countryRepository
-     * @param ApiClient $ivyApiClient
      * @param SalesChannelContextSwitcher $channelContextSwitcher
      * @param SalesChannelContextServiceInterface $contextService
      * @param PromotionItemBuilder $promotionItemBuilder
@@ -113,12 +106,12 @@ class ExpressService
         EntityRepositoryInterface $orderRepository,
         EntityRepositoryInterface $pluginRepository,
         CartService $cartService,
+        AbstractCartOrderRoute $orderRoute,
         SystemConfigService $systemConfigService,
         ConfigHandler $configHandler,
         RouterInterface $router,
         createIvyOrderData $createIvyOrderData,
         SalesChannelRepositoryInterface $countryRepository,
-        ApiClient $ivyApiClient,
         SalesChannelContextSwitcher $channelContextSwitcher,
         SalesChannelContextServiceInterface $contextService,
         PromotionItemBuilder $promotionItemBuilder,
@@ -130,13 +123,10 @@ class ExpressService
         $this->salesChannelRepo = $salesChannelRepo;
         $this->paymentRepository = $paymentRepository;
         $this->cartService = $cartService;
+        $this->orderRoute = $orderRoute;
         $this->configHandler = $configHandler;
         $this->router = $router;
         $this->createIvyOrderData = $createIvyOrderData;
-        $this->ivyApiClient = $ivyApiClient;
-        $encoders = [new XmlEncoder(), new JsonEncoder()];
-        $normalizers = [new CustomObjectNormalizer()];
-        $this->serializer = new Serializer($normalizers, $encoders);
         $this->channelContextSwitcher = $channelContextSwitcher;
         $this->contextService = $contextService;
         $this->promotionItemBuilder = $promotionItemBuilder;
@@ -470,48 +460,32 @@ class ExpressService
         throw new IvyException('can not create user from request');
     }
 
+
     /**
+     * @param RequestDataBag $data
      * @param string $contextToken
      * @param SalesChannelContext $salesChannelContext
      * @return array
      * @throws IvyException
      */
     public function checkoutConfirm(
-        string $referenceId,
+        RequestDataBag $data,
         string $contextToken,
         SalesChannelContext $salesChannelContext
     ): array
     {
-        $request = new Request([], []);
-        $request->setMethod('POST');
-        $request->headers->set(PlatformRequest::HEADER_CONTEXT_TOKEN, $contextToken);
+        $cart = $this->cartService->getCart($salesChannelContext->getToken(), $salesChannelContext);
+        $order = $this->orderRoute->order($cart, $salesChannelContext, $data)->getOrder();
 
-        /** @var JsonResponse $response */
-        $response = $this->salesChannelProxyController->proxy('checkout/order',
-            $salesChannelContext->getSalesChannelId(),
-            $request,
-            $salesChannelContext->getContext()
-        );
+        $orderId = $order->getId();
 
-        $responseContent = (string)$response->getContent();
-        $created = false;
-        if (!empty($responseContent)) {
-            $orderData = json_decode($responseContent, true);
-            if (\is_array($orderData) && !empty($orderData['id'])) {
-                $created = true;
-                $this->logger->info('created order ' . $orderData['orderNumber'] . ' (' . $orderData['id'] . ')');
-            } else {
-                $this->logger->error($responseContent);
-            }
-        }
-
-        if (!$created) {
+        if (!$orderId) {
             throw new IvyException('order can not be created');
         }
 
         $this->logger->info('Initiate a payment for an order');
         $request = new Request([], [
-            'orderId'      => $orderData['id'],
+            'orderId'      => $orderId,
             'paymentDetails' => [
                 'confirmed' => true
             ]
@@ -529,11 +503,13 @@ class ExpressService
         $this->logger->info('redirectUrl: ' . $redirectUrl);
         $paymentToken = $this->getToken($redirectUrl);
         $this->logger->info('paymentToken: ' . $paymentToken);
-        $orderData['_sw_payment_token'] = $paymentToken;
 
-        $this->logger->info('update ivy order with new referenceId: ' . $orderData['id']);
+        $this->logger->info('update ivy order with new referenceId: ' . $order->getId());
 
-        return $orderData;
+        return [
+            $order,
+            $paymentToken
+        ];
     }
 
      /**
