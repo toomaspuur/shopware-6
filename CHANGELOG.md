@@ -1,3 +1,7 @@
+# 1.2.1
+
+- Bugfix & Performance improvements
+
 # 1.2.0
 
 - Refactoring and Performance improvements
