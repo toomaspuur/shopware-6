@@ -4,6 +4,7 @@ namespace WizmoGmbh\IvyPayment\Express\Controller;
 
 use Shopware\Core\Checkout\Cart\Exception\InvalidCartException;
 use Shopware\Core\Checkout\Cart\SalesChannel\CartService;
+use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\Framework\Validation\Exception\ConstraintViolationException;
 use Shopware\Core\PlatformRequest;
@@ -314,17 +315,19 @@ class ExpressController extends StorefrontController
                     $this->logger->debug('shopperPhone: ' . $payload['shopperPhone']);
                 }
 
-                $orderData = $this->expressService->checkoutConfirm(
-                    $referenceId,
+                /** @var OrderEntity $order */
+                [ $order, $token ] = $this->expressService->checkoutConfirm(
+                    $inputData,
                     $contextToken,
                     $salesChannelContext
                 );
+
                 $outputData = [
                     'redirectUrl' => $finishUrl,
-                    'displayId' => $orderData['orderNumber'],
-                    'referenceId' => $orderData['id'],
+                    'displayId' => $order->getOrderNumber(),
+                    'referenceId' => $order->getId(),
                     'metadata' => [
-                        '_sw_payment_token' => $orderData['_sw_payment_token'],
+                        '_sw_payment_token' => $token,
                     ]
                 ];
             } catch (\Throwable $e) {
