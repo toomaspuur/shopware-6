@@ -46,6 +46,7 @@
             <argument type="service" id="Shopware\Core\Checkout\Shipping\SalesChannel\ShippingMethodRoute"/>
             <argument type="service" id="Shopware\Core\Framework\Api\Controller\SalesChannelProxyController"/>
             <argument type="service" id="hcou.ivypayment.logger.payment_logger"/>
+            <argument type="service" id="Shopware\Core\Checkout\Customer\SalesChannel\RegisterRoute"/>
         </service>
 
         <service class="WizmoGmbh\IvyPayment\IvyApi\ApiClient" id="wizmo_gmbh.ivy_payment.ivy_api.api_client">

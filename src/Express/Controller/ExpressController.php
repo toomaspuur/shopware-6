@@ -155,13 +155,8 @@ class ExpressController extends StorefrontController
                                 $contextToken,
                                 $salesChannelContext
                             );
-                            $customerData = \json_decode((string) $storeApiResponse->getContent(), true);
-                            if ((string) ($customerData['email'] ?? '') === '') {
-                                $message = 'can not create customer. Status code: ' . $storeApiResponse->getStatusCode(
-                                ) . ' body: ' . $storeApiResponse->getContent();
-                                throw new IvyException($message);
-                            }
-                            $this->logger->info('created customer: ' . $customerData['email']);
+                            $customer = $storeApiResponse->getCustomer();
+                            $this->logger->info('created customer: ' . $customer->getEmail());
                             $contextToken = $storeApiResponse->headers->get(PlatformRequest::HEADER_CONTEXT_TOKEN);
                             $this->logger->info('new context token: ' . $contextToken);
                             $salesChannelContext = $this->expressService->reloadContext(

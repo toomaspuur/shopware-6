@@ -8,6 +8,8 @@ use Shopware\Core\Checkout\Cart\Exception\OrderNotFoundException;
 use Shopware\Core\Checkout\Cart\LineItem\LineItem;
 use Shopware\Core\Checkout\Cart\SalesChannel\AbstractCartOrderRoute;
 use Shopware\Core\Checkout\Cart\SalesChannel\CartService;
+use Shopware\Core\Checkout\Customer\SalesChannel\CustomerResponse;
+use Shopware\Core\Checkout\Customer\SalesChannel\RegisterRoute;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Promotion\Cart\PromotionItemBuilder;
 use Shopware\Core\Checkout\Shipping\SalesChannel\AbstractShippingMethodRoute;
@@ -80,6 +82,7 @@ class ExpressService
 
     private AbstractCartOrderRoute $orderRoute;
 
+    private RegisterRoute $registerRoute;
 
     /**
      * @param EntityRepositoryInterface $salesChannelRepo
@@ -99,6 +102,7 @@ class ExpressService
      * @param AbstractShippingMethodRoute $shippingMethodRoute
      * @param SalesChannelProxyController $salesChannelProxyController
      * @param Logger $logger
+     * @param RegisterRoute $registerRoute
      */
     public function __construct(
         EntityRepositoryInterface $salesChannelRepo,
@@ -117,7 +121,8 @@ class ExpressService
         PromotionItemBuilder $promotionItemBuilder,
         AbstractShippingMethodRoute $shippingMethodRoute,
         SalesChannelProxyController $salesChannelProxyController,
-        Logger $logger
+        Logger $logger,
+        RegisterRoute $registerRoute
     ) {
         $this->systemConfigService = $systemConfigService;
         $this->salesChannelRepo = $salesChannelRepo;
@@ -140,6 +145,7 @@ class ExpressService
         /** @var PluginEntity $plugin */
         $plugin = $pluginRepository->search($criteria, Context::createDefaultContext())->first();
         $this->version = $plugin->getVersion();
+        $this->registerRoute = $registerRoute;
     }
 
     /**
@@ -435,7 +441,7 @@ class ExpressService
      * @param array $data
      * @param string $contextToken
      * @param SalesChannelContext $salesChannelContext
-     * @return JsonResponse
+     * @return CustomerResponse
      * @throws Exception
      * @throws IvyException
      */
@@ -443,7 +449,7 @@ class ExpressService
         array $data,
         string $contextToken,
         SalesChannelContext $salesChannelContext
-    ): JsonResponse
+    ): CustomerResponse
     {
         $userData = $this->prepareUserData($data, $salesChannelContext);
         if (!empty($userData)) {
@@ -451,13 +457,8 @@ class ExpressService
             $request->setMethod('POST');
             $request->headers->set(PlatformRequest::HEADER_CONTEXT_TOKEN, $contextToken);
 
-            /** @var JsonResponse $response */
-            $response = $this->salesChannelProxyController->proxy('account/register',
-                $salesChannelContext->getSalesChannelId(),
-                $request,
-                $salesChannelContext->getContext()
-            );
-            return $response;
+            $data = new RequestDataBag($userData);
+            return $this->registerRoute->register($data, $salesChannelContext);
         }
         throw new IvyException('can not create user from request');
     }
