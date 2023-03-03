@@ -92,6 +92,7 @@ class IvyCheckoutSession
             PlatformRequest::HEADER_CONTEXT_TOKEN => $contextToken,
             '_sw_payment_token' => $contextToken,
         ]);
+        $ivySessionData->setVerificationToken($contextToken);
         // add plugin version as string to know whether to redirect to confirmation page after ivy checkout
         $ivySessionData->setPlugin('sw6-' . $this->version);
 
