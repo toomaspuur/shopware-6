@@ -59,7 +59,6 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
     }
 
     private function deleteOrder(OrderEntity $order): void {
-        //TODO: test if i switch status or select other payment methods, what happens
         $this->logger->debug("!DELETE ORDER!");
         $this->orderRepository->delete([
             ['id' => $order->getId()],
