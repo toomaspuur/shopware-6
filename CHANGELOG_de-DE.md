@@ -1,3 +1,6 @@
+# 1.2.2
+
+- Kompatibilität mit "Bonus-Punkte für Shopware" Plugin
 # 1.2.1
 
 - Bugfix & Performance Verbesserungen
