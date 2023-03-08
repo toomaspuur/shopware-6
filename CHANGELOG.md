@@ -1,3 +1,7 @@
+# 1.2.3
+
+- Fixes and Improvements
+
 # 1.2.2
 
 - Compatiblity for "Bonus Points for Shopware" Plugin
