@@ -83,12 +83,14 @@ class IvyPaymentService
 
         try {
             $paymentHandler->finalize($transaction, $request, $context);
-        } catch (CustomerCanceledAsyncPaymentException $e) {
-            $this->transactionStateHandler->cancel($transactionId, $context->getContext());
         } catch (PaymentProcessException $e) {
-            $this->logger->error('An error occurred during finalizing async payment', ['orderTransactionId' => $transactionId, 'exceptionMessage' => $e->getMessage()]);
+            $this->logger->error('A PaymentProcessException occurred during finalizing async payment', ['orderTransactionId' => $transactionId, 'exceptionMessage' => $e->getMessage()]);
             $this->transactionStateHandler->fail($transactionId, $context->getContext());
         }
+    }
+
+    public function cancelPayment(string $transactionId, SalesChannelContext $context): void {
+        $this->transactionStateHandler->cancel($transactionId, $context->getContext());
     }
 
     /**

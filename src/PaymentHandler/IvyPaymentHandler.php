@@ -10,12 +10,14 @@ declare(strict_types=1);
 namespace WizmoGmbh\IvyPayment\PaymentHandler;
 
 use GuzzleHttp\Exception\GuzzleException;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Payment\Cart\AsyncPaymentTransactionStruct;
 use Shopware\Core\Checkout\Payment\Cart\PaymentHandler\AsynchronousPaymentHandlerInterface;
 use Shopware\Core\Checkout\Payment\Exception\AsyncPaymentProcessException;
-use Shopware\Core\Checkout\Payment\Exception\CustomerCanceledAsyncPaymentException;
+use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
@@ -54,6 +56,37 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
 
         $this->logger = $logger;
         $this->ivyCheckoutSession = $ivyCheckoutSession;
+    }
+
+    private function deleteOrder(OrderEntity $order): void {
+        $this->logger->debug("!DELETE ORDER!");
+        $this->orderRepository->delete([
+            ['id' => $order->getId()],
+        ], Context::createDefaultContext());
+    }
+
+    /**
+     * For deleting an order all OTHER payment-transactions MUST have the state of STATE_CANCELLED
+     * The ivy-transaction must also be in a valid state for deleting
+     *
+     * @param OrderEntity $order
+     * @param string $state The actual state of the ivypayment transaction
+     * @return bool
+     */
+    private function canOrderBeDeleted(OrderEntity $order, string $state): bool {
+        $transactions = $order->getTransactions();
+
+        $wrongTransactions = $transactions->filter(function (OrderTransactionEntity $transaction) {
+            return $transaction->getStateMachineState()->getTechnicalName() !== OrderTransactionStates::STATE_CANCELLED
+                && $transaction->getPaymentMethod()->getHandlerIdentifier() !== IvyPaymentHandler::class;
+        });
+
+        return $wrongTransactions->count() === 0 && (
+            $state === OrderTransactionStates::STATE_IN_PROGRESS ||
+            $state === OrderTransactionStates::STATE_OPEN ||
+            $state === OrderTransactionStates::STATE_FAILED ||
+            $state === OrderTransactionStates::STATE_CANCELLED
+        );
     }
 
     /**
@@ -103,26 +136,13 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
      */
     public function finalize(AsyncPaymentTransactionStruct $transaction, Request $request, SalesChannelContext $salesChannelContext): void
     {
-
         $transactionId = $transaction->getOrderTransaction()->getId();
 
-        // Example check if the user cancelled. Might differ for each payment provider
-        if ($request->query->getBoolean('cancel')) {
-            throw new CustomerCanceledAsyncPaymentException(
-                $transactionId,
-                'Customer canceled the payment on the Ivy page'
-            );
-        }
+        /** @var array $payload */
+        $payload = $request->request->get('payload');
+        $paymentState = $payload['status'] ?? null;
 
-        // Example check for the actual status of the payment. Might differ for each payment provider
-        $paymentState = $request->query->getAlpha('status');
-        if (empty($paymentState)) {
-            /** @var array $payload */
-            $payload = $request->request->get('payload');
-            if ($payload !== null && isset($payload['status'])) {
-                $paymentState = $payload['status'];
-            }
-        }
+        $this->logger->debug("paymentState: $paymentState");
 
         $context = $salesChannelContext->getContext();
 
@@ -132,7 +152,16 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
                 break;
 
             case 'canceled':
-                $this->transactionStateHandler->cancel($transactionId, $context);
+                $ivyPaymentState = $transaction->getOrderTransaction()->getStateMachineState()->getTechnicalName();
+                $this->logger->debug("getOrderTransaction state: $ivyPaymentState");
+                $order = $this->getOrderById($transaction->getOrder()->getId(), $salesChannelContext);
+
+                if($this->canOrderBeDeleted($order, $ivyPaymentState)) {
+                    $this->deleteOrder($order);
+                } else {
+                    $this->logger->debug("Order transactions in wrong state for delete so we only cancel it");
+                    $this->transactionStateHandler->cancel($transactionId, $context);
+                }
                 break;
 
             case 'processing':

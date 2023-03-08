@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace WizmoGmbh\IvyPayment\Core\Checkout\Payment\Controller;
 
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionCollection;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Payment\Cart\Token\TokenFactoryInterfaceV2;
 use Shopware\Core\Checkout\Payment\Exception\AsyncPaymentFinalizeException;
 use Shopware\Core\Checkout\Payment\Exception\CustomerCanceledAsyncPaymentException;
@@ -17,6 +19,7 @@ use Shopware\Core\Checkout\Payment\Exception\TokenExpiredException;
 use Shopware\Core\Checkout\Payment\Exception\UnknownPaymentMethodException;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
 use Shopware\Core\Framework\Routing\Annotation\Since;
+use Shopware\Core\Framework\ShopwareHttpException;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Storefront\Controller\StorefrontController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -68,15 +71,26 @@ class IvyPaymentController extends StorefrontController
      * @throws TokenExpiredException
      * @throws UnknownPaymentMethodException
      */
-    public function failedTransaction(Request $request): Response
+    public function failedTransaction(Request $request, SalesChannelContext $salesChannelContext): Response
     {
         $finishUrl = '/account/order';
-        $referenceId = $request->get('reference');
 
-        $order = $this->expressService->getIvyOrderByReference($referenceId);
+        if($paymentToken = $request->query->get('_sw_payment_token')) {
+            $this->logger->debug('payment token: '.$paymentToken);
+            try{
+                $token = $this->tokenFactoryInterfaceV2->parseToken($paymentToken);
+                $transactionId = $token->getTransactionId();
+                $this->paymentService->cancelPayment($transactionId, $salesChannelContext);
+                $referenceId = $request->get('reference');
 
-        if ($order !== null) {
-            $finishUrl = '/account/order/edit/' . $order->getId() . '?error-code=CHECKOUT__UNKNOWN_ERROR';
+                $order = $this->expressService->getIvyOrderByReference($referenceId);
+
+                if ($order !== null) {
+                    $finishUrl = '/account/order/edit/' . $order->getId() . '?error-code=CHECKOUT__UNKNOWN_ERROR';
+                }
+            } catch (ShopwareHttpException $exception) {
+                $this->logger->error('payment token invalid, ignore cancel');
+            }
         }
 
         return new RedirectResponse($finishUrl);
@@ -125,38 +139,32 @@ class IvyPaymentController extends StorefrontController
             $this->logger->debug('webhook payload: ' . \print_r($payload, true));
 
             $referenceId = $payload['referenceId'];
-            $paymentToken = $payload['metadata']['_sw_payment_token'] ?? null;
-
-            if ($paymentToken === null) {
-                $order = $this->expressService->getIvyOrderByReference($referenceId);
-                $this->logger->debug('no payment token');
-                if ($order === null) {
-                    $this->logger->error('webhook request: order not found with: '.$referenceId);
-                    return new JsonResponse(null, Response::HTTP_NOT_FOUND);
-                }
-
-                $transactionId = $order
-                    ->getTransactions()
-                    ->filterByPaymentMethodId($this->expressService->getPaymentMethodId())
-                    ->first()
-                    ->getId();
-            } else {
-                $this->logger->debug('payment token: '.$paymentToken);
-                $token = $this->tokenFactoryInterfaceV2->parseToken($paymentToken);
-                $transactionId = $token->getTransactionId();
-            }
-
             $request->request->set('status', $payload['status']);
             $this->logger->debug('set status to: ' . $payload['status'] . ' for referenceId: '.$referenceId);
 
-            $this->paymentService->updateTransaction(
-                $transactionId,
-                $this->expressService->getPaymentMethodId(),
-                $request,
-                $salesChannelContext
-            );
+            $order = $this->expressService->getIvyOrderByReference($referenceId);
+            if($order === null) {
+                $this->logger->debug('Order does not exist with this referenceId, ignore webhook');
+                return new JsonResponse(null, Response::HTTP_OK);
+            }
+
+            $paymentMethodId = $this->expressService->getPaymentMethodId();
+            /** @var OrderTransactionEntity $transaction */
+            $transaction = $order->getTransactions()->filterByPaymentMethodId( $paymentMethodId )->first();
+
+            if($transaction !== null) {
+                $this->paymentService->updateTransaction(
+                    $transaction->getId(),
+                    $paymentMethodId,
+                    $request,
+                    $salesChannelContext
+                );
+            } else {
+                $this->logger->debug('no ivy-transaction found for referenceId: '.$referenceId);
+            }
         }
 
+        $this->logger->debug('webhook finished  <== '. $type);
         return new JsonResponse(null, Response::HTTP_OK);
     }
 
