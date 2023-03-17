@@ -111,9 +111,9 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
             $this->logger->info('pseudo pay: immediately return url to finalize transaction');
             return new RedirectResponse($returnUrl);
         } else {
-            $this->logger->info('checkout needs to be created');
             try {
-                $order = $this->getOrderById($dataBag->get('orderId'), $salesChannelContext);
+                $this->logger->info('checkout needs to be created with orderId: '. $transaction->getOrder()->getId());
+                $order = $this->getOrderById($transaction->getOrder()->getId(), $salesChannelContext);
                 $returnUrl = $this->ivyCheckoutSession->createCheckoutSession(
                     $contextToken,
                     $salesChannelContext,
