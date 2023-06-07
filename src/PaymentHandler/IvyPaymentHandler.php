@@ -164,10 +164,6 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
                 }
                 break;
 
-            case 'processing':
-                $this->transactionStateHandler->process($transactionId, $context);
-                break;
-
             case 'authorised':
             case 'waiting_for_payment':
                 $this->transactionStateHandler->authorize($transactionId, $context);
@@ -177,12 +173,8 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
                 $this->transactionStateHandler->paid($transactionId, $context);
                 break;
 
-            case 'disputed':
-            case 'in_refund':
-                $this->transactionStateHandler->chargeback($transactionId, $context);
-                break;
-
             case 'refunded':
+            case 'in_refund':
                 $this->transactionStateHandler->refund($transactionId, $context);
                 break;
 
