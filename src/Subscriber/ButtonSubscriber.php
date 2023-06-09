@@ -11,7 +11,7 @@ declare(strict_types=1);
 namespace WizmoGmbh\IvyPayment\Subscriber;
 
 use Shopware\Core\Checkout\Payment\PaymentMethodEntity;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Storefront\Page\Checkout\Cart\CheckoutCartPageLoadedEvent;
 use Shopware\Storefront\Page\Checkout\Confirm\CheckoutConfirmPageLoadedEvent;
@@ -27,11 +27,11 @@ class ButtonSubscriber implements EventSubscriberInterface
 {
     private ConfigHandler $configHandler;
 
-    private EntityRepositoryInterface $salesChannelRepository;
+    private EntityRepository $salesChannelRepository;
 
     public function __construct(
         ConfigHandler $configHandler,
-        EntityRepositoryInterface $salesChannelRepository
+        EntityRepository $salesChannelRepository
     ) {
         $this->configHandler = $configHandler;
         $this->salesChannelRepository = $salesChannelRepository;

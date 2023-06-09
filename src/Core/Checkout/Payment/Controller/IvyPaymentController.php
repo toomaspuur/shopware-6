@@ -9,17 +9,17 @@ declare(strict_types=1);
 
 namespace WizmoGmbh\IvyPayment\Core\Checkout\Payment\Controller;
 
-use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
+use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Payment\Cart\Token\TokenFactoryInterfaceV2;
 use Shopware\Core\Checkout\Payment\Exception\AsyncPaymentFinalizeException;
 use Shopware\Core\Checkout\Payment\Exception\CustomerCanceledAsyncPaymentException;
 use Shopware\Core\Checkout\Payment\Exception\InvalidTransactionException;
 use Shopware\Core\Checkout\Payment\Exception\TokenExpiredException;
 use Shopware\Core\Checkout\Payment\Exception\UnknownPaymentMethodException;
-use Shopware\Core\Framework\Routing\Annotation\RouteScope;
 use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\Framework\ShopwareHttpException;
+use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Storefront\Controller\StorefrontController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -31,7 +31,9 @@ use WizmoGmbh\IvyPayment\Logger\IvyLogger;
 use WizmoGmbh\IvyPayment\Services\IvyPaymentService;
 use WizmoGmbh\IvyPayment\Express\Service\ExpressService;
 
-
+/**
+ * @Route(defaults={"_routeScope"={"storefront"}})
+ */
 class IvyPaymentController extends StorefrontController
 {
     private IvyPaymentService $paymentService;
@@ -57,13 +59,13 @@ class IvyPaymentController extends StorefrontController
         $this->paymentService = $paymentService;
         $this->tokenFactoryInterfaceV2 = $tokenFactoryInterfaceV2;
         $this->logger = $logger;
+        $this->logger->setName('WEBHOOK');
         $this->expressService = $expressService;
     }
 
     /**
      * @Since("6.0.0.0")
      * @Route("/ivypayment/failed-transaction", name="frontend.ivypayment.failed.transaction", methods={"GET", "POST"}, defaults={"XmlHttpRequest"=true})
-     * @RouteScope(scopes={"storefront"})
      *
      * @throws AsyncPaymentFinalizeException
      * @throws CustomerCanceledAsyncPaymentException
@@ -99,19 +101,16 @@ class IvyPaymentController extends StorefrontController
     /**
      * @Since("6.0.0.0")
      * @Route("/ivypayment/update-transaction", name="ivypayment.update.transaction", methods={"GET", "POST"}, defaults={"XmlHttpRequest"=true,"csrf_protected"=false,"auth_required"=false})
-     * @RouteScope(scopes={"storefront"})
      *
      * @throws AsyncPaymentFinalizeException
      * @throws CustomerCanceledAsyncPaymentException
      * @throws InvalidTransactionException
      * @throws TokenExpiredException
-     * @throws UnknownPaymentMethodException|\Doctrine\DBAL\Exception
+     * @throws UnknownPaymentMethodException|\Doctrine\DBAL\Exception|\WizmoGmbh\IvyPayment\Exception\IvyException
      * @psalm-suppress InvalidArrayAccess
      */
-    public function updateTransaction(Request $request, SalesChannelContext $salesChannelContext): Response
+    public function updateTransaction(Request $request, RequestDataBag $inputData, SalesChannelContext $salesChannelContext): Response
     {
-        $this->logger->info('received webhook');
-
         $type = $request->request->get('type');
         /** @var array $payload */
         $payload = $request->request->get('payload');
@@ -130,24 +129,63 @@ class IvyPaymentController extends StorefrontController
 
         $this->logger->info('webhook request: valid request ==> '. $type);
 
-        if ($type === 'order_created' || $type === 'order_updated') {
-            if (!isset($payload['status'])) {
-                $this->logger->error('bad webhook request');
-                return new JsonResponse(null, Response::HTTP_BAD_REQUEST);
-            }
-    
-            $this->logger->debug('webhook payload: ' . \print_r($payload, true));
+        if ($type !== 'order_created' && $type !== 'order_updated') {
+            $this->logger->debug('skip notification type ' . $type);
+            return new JsonResponse(['success' => false, 'error' => 'skip notification type ' . $type], Response::HTTP_OK);
+        }
 
-            $referenceId = $payload['referenceId'];
-            $request->request->set('status', $payload['status']);
-            $this->logger->debug('set status to: ' . $payload['status'] . ' for referenceId: '.$referenceId);
+        if (!isset($payload['status'])) {
+            $this->logger->error('bad webhook request');
+            return new JsonResponse(['success' => false, 'error' => 'bad webhook request'], Response::HTTP_BAD_REQUEST);
+        }
 
-            $order = $this->expressService->getIvyOrderByReference($referenceId);
-            if($order === null) {
+        $this->logger->debug('webhook payload: ' . \print_r($payload, true));
+
+        $status = $payload['status'];
+        $this->logger->info('WebHook status is ' . $status);
+
+        $statusForCreateOrder = \in_array($status, ['paid', 'waiting_for_payment'], true);
+        $this->logger->info('status for createOrder ' . \var_export($statusForCreateOrder, true));
+
+        $referenceId = $payload['referenceId'];
+
+        $toCreateOrder = $toUpdateOrder = false;
+
+        $request->request->set('status', $payload['status']);
+
+        $order = $this->expressService->getIvyOrderByReference($referenceId);
+        if($order === null) {
+            if (!$statusForCreateOrder) {
                 $this->logger->debug('Order does not exist with this referenceId, ignore webhook');
                 return new JsonResponse(null, Response::HTTP_OK);
             }
+            $toCreateOrder = true;
+        } elseif (!$order->getOrderNumber()) {
+            if ($statusForCreateOrder) {
+                $toCreateOrder = true;
+            }
+        } else {
+            $toUpdateOrder = true;
+        }
 
+        if ($toCreateOrder) {
+            /** @var OrderEntity $order */
+            [ $order, $token ] = $this->expressService->checkoutConfirm($inputData, $payload, $salesChannelContext);
+            $outputData = [
+                'displayId' => $order->getOrderNumber(),
+                'referenceId' => $order->getId(),
+                'metadata' => [
+                    '_sw_payment_token' => $token,
+                    'shopwareOrderId' => $order->getOrderNumber()
+                ]
+            ];
+            $this->logger->info(\print_r($outputData, true));
+            return new JsonResponse($outputData, Response::HTTP_OK);
+        }
+
+        if ($toUpdateOrder) {
+            $this->logger->info('update order ' . $order->getOrderNumber());
+            $this->logger->debug('set status to: ' . $payload['status'] . ' for referenceId: ' . $referenceId);
             $paymentMethodId = $this->expressService->getPaymentMethodId();
             /** @var OrderTransactionEntity $transaction */
             $transaction = $order->getTransactions()->filterByPaymentMethodId( $paymentMethodId )->first();
@@ -162,16 +200,15 @@ class IvyPaymentController extends StorefrontController
             } else {
                 $this->logger->debug('no ivy-transaction found for referenceId: '.$referenceId);
             }
-        }
 
-        $this->logger->debug('webhook finished  <== '. $type);
+            $this->logger->debug('webhook finished  <== '. $type);
+        }
         return new JsonResponse(null, Response::HTTP_OK);
     }
 
     /**
      * @Since("6.0.0.0")
      * @Route("/ivypayment/finalize-transaction", name="frontend.ivypayment.finalize.transaction", methods={"GET", "POST"}, defaults={"XmlHttpRequest"=true})
-     * @RouteScope(scopes={"storefront"})
      *
      * @throws AsyncPaymentFinalizeException
      * @throws CustomerCanceledAsyncPaymentException

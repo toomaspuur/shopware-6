@@ -18,7 +18,7 @@ use Shopware\Core\Checkout\Payment\Cart\AsyncPaymentTransactionStruct;
 use Shopware\Core\Checkout\Payment\Cart\PaymentHandler\AsynchronousPaymentHandlerInterface;
 use Shopware\Core\Checkout\Payment\Exception\AsyncPaymentProcessException;
 use Shopware\Core\Framework\Context;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
@@ -33,7 +33,7 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
 {
     private OrderTransactionStateHandler $transactionStateHandler;
 
-    private EntityRepositoryInterface $orderRepository;
+    private EntityRepository $orderRepository;
 
     private IvyLogger $logger;
 
@@ -41,13 +41,13 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
 
     /**
      * @param OrderTransactionStateHandler $transactionStateHandler
-     * @param EntityRepositoryInterface $orderRepository
+     * @param EntityRepository $orderRepository
      * @param IvyLogger $logger
      * @param IvyCheckoutSession $ivyCheckoutSession
      */
     public function __construct(
         OrderTransactionStateHandler $transactionStateHandler,
-        EntityRepositoryInterface $orderRepository,
+        EntityRepository $orderRepository,
         IvyLogger $logger,
         IvyCheckoutSession $ivyCheckoutSession
     ) {
@@ -108,25 +108,39 @@ class IvyPaymentHandler implements AsynchronousPaymentHandlerInterface
         $paymentDetails = $dataBag->get('paymentDetails');
         if (!empty($paymentDetails) && !empty($paymentDetails->get('confirmed'))) {
             //Checkoutsession already existing just return
-            $this->logger->info('pseudo pay: immediately return url to finalize transaction');
+            $order = $transaction->getOrder();
+            $this->logger->info('payment for order: ' . $order->getOrderNumber() . ' ' . $order->getId());
+            $ivyStatus = $order->getCustomFields()['ivyStatus'] ?? null;
+            $this->logger->info('ivy payment status: ' . $ivyStatus);
+            $transactionId = $transaction->getOrderTransaction()->getId();
+            $context = $salesChannelContext->getContext();
+            switch ($ivyStatus) {
+                case 'waiting_for_payment':
+                    $this->transactionStateHandler->authorize($transactionId, $context);
+                    break;
+
+                case 'paid':
+                    $this->transactionStateHandler->paid($transactionId, $context);
+                    break;
+            }
             return new RedirectResponse($returnUrl);
-        } else {
-            try {
-                $this->logger->info('checkout needs to be created with orderId: '. $transaction->getOrder()->getId());
-                $order = $this->getOrderById($transaction->getOrder()->getId(), $salesChannelContext);
-                $returnUrl = $this->ivyCheckoutSession->createCheckoutSession(
-                    $contextToken,
-                    $salesChannelContext,
-                    false,
-                    $order
-                );
-                return new RedirectResponse($returnUrl);
-            } catch (\Exception $e) {
-                throw new AsyncPaymentProcessException(
-                    $transaction->getOrderTransaction()->getId(),
-                    'An error occurred during the communication with external payment gateway' . \PHP_EOL . $e->getMessage()
-                );
-            }    
+        }
+
+        try {
+            $this->logger->info('checkout needs to be created with orderId: '. $transaction->getOrder()->getId());
+            $order = $this->getOrderById($transaction->getOrder()->getId(), $salesChannelContext);
+            $returnUrl = $this->ivyCheckoutSession->createCheckoutSession(
+                $contextToken,
+                $salesChannelContext,
+                false,
+                $order
+            );
+            return new RedirectResponse($returnUrl);
+        } catch (\Exception $e) {
+            throw new AsyncPaymentProcessException(
+                $transaction->getOrderTransaction()->getId(),
+                'An error occurred during the communication with external payment gateway' . \PHP_EOL . $e->getMessage()
+            );
         }
     }
 

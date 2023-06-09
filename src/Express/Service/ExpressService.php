@@ -8,6 +8,7 @@ use Shopware\Core\Checkout\Cart\Exception\OrderNotFoundException;
 use Shopware\Core\Checkout\Cart\LineItem\LineItem;
 use Shopware\Core\Checkout\Cart\SalesChannel\AbstractCartOrderRoute;
 use Shopware\Core\Checkout\Cart\SalesChannel\CartService;
+use Shopware\Core\Checkout\Customer\SalesChannel\AbstractRegisterRoute;
 use Shopware\Core\Checkout\Customer\SalesChannel\CustomerResponse;
 use Shopware\Core\Checkout\Customer\SalesChannel\RegisterRoute;
 use Shopware\Core\Checkout\Order\OrderEntity;
@@ -18,7 +19,7 @@ use Shopware\Core\Checkout\Shipping\ShippingMethodEntity;
 use Shopware\Core\Content\Newsletter\Exception\SalesChannelDomainNotFoundException;
 use Shopware\Core\Framework\Api\Controller\SalesChannelProxyController;
 use Shopware\Core\Framework\Context;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Sorting\FieldSorting;
@@ -28,7 +29,7 @@ use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\PlatformRequest;
 use Shopware\Core\System\SalesChannel\Context\SalesChannelContextServiceInterface;
 use Shopware\Core\System\SalesChannel\Context\SalesChannelContextServiceParameters;
-use Shopware\Core\System\SalesChannel\Entity\SalesChannelRepositoryInterface;
+use Shopware\Core\System\SalesChannel\Entity\SalesChannelRepository;
 use Shopware\Core\System\SalesChannel\SalesChannel\SalesChannelContextSwitcher;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\SalesChannel\SalesChannelEntity;
@@ -50,9 +51,9 @@ class ExpressService
 {
     private SystemConfigService $systemConfigService;
 
-    private EntityRepositoryInterface $salesChannelRepo;
+    private EntityRepository $salesChannelRepo;
 
-    private EntityRepositoryInterface $paymentRepository;
+    private EntityRepository $paymentRepository;
 
     private CartService $cartService;
 
@@ -70,13 +71,13 @@ class ExpressService
 
     private Logger $logger;
 
-    private SalesChannelRepositoryInterface $countryRepository;
+    private SalesChannelRepository $countryRepository;
 
     private AbstractShippingMethodRoute $shippingMethodRoute;
 
     private SalesChannelProxyController $salesChannelProxyController;
 
-    private EntityRepositoryInterface $orderRepository;
+    private EntityRepository $orderRepository;
 
     private string $version;
 
@@ -85,17 +86,17 @@ class ExpressService
     private RegisterRoute $registerRoute;
 
     /**
-     * @param EntityRepositoryInterface $salesChannelRepo
-     * @param EntityRepositoryInterface $paymentRepository
-     * @param EntityRepositoryInterface $orderRepository
-     * @param EntityRepositoryInterface $pluginRepository
+     * @param EntityRepository $salesChannelRepo
+     * @param EntityRepository $paymentRepository
+     * @param EntityRepository $orderRepository
+     * @param EntityRepository $pluginRepository
      * @param CartService $cartService
      * @param AbstractCartOrderRoute $orderRoute
      * @param SystemConfigService $systemConfigService
      * @param ConfigHandler $configHandler
      * @param RouterInterface $router
      * @param createIvyOrderData $createIvyOrderData
-     * @param SalesChannelRepositoryInterface $countryRepository
+     * @param SalesChannelRepository $countryRepository
      * @param SalesChannelContextSwitcher $channelContextSwitcher
      * @param SalesChannelContextServiceInterface $contextService
      * @param PromotionItemBuilder $promotionItemBuilder
@@ -105,24 +106,24 @@ class ExpressService
      * @param RegisterRoute $registerRoute
      */
     public function __construct(
-        EntityRepositoryInterface $salesChannelRepo,
-        EntityRepositoryInterface $paymentRepository,
-        EntityRepositoryInterface $orderRepository,
-        EntityRepositoryInterface $pluginRepository,
+        EntityRepository $salesChannelRepo,
+        EntityRepository $paymentRepository,
+        EntityRepository $orderRepository,
+        EntityRepository $pluginRepository,
         CartService $cartService,
         AbstractCartOrderRoute $orderRoute,
         SystemConfigService $systemConfigService,
         ConfigHandler $configHandler,
         RouterInterface $router,
         createIvyOrderData $createIvyOrderData,
-        SalesChannelRepositoryInterface $countryRepository,
+        SalesChannelRepository $countryRepository,
         SalesChannelContextSwitcher $channelContextSwitcher,
         SalesChannelContextServiceInterface $contextService,
         PromotionItemBuilder $promotionItemBuilder,
         AbstractShippingMethodRoute $shippingMethodRoute,
         SalesChannelProxyController $salesChannelProxyController,
         Logger $logger,
-        RegisterRoute $registerRoute
+        AbstractRegisterRoute $registerRoute
     ) {
         $this->systemConfigService = $systemConfigService;
         $this->salesChannelRepo = $salesChannelRepo;
@@ -265,7 +266,17 @@ class ExpressService
         $criteria->addFilter(new EqualsFilter('id', $referenceId))
             ->addAssociation('transactions.paymentMethod');
         $criteria->getAssociation('transactions')->addSorting(new FieldSorting('createdAt'));
-        return $this->orderRepository->search($criteria, $context)->first();
+        $order = $this->orderRepository->search($criteria, $context)->first();
+        if ($order === null) {
+            $this->logger->info('order by id not found, search by customFields.ivyReference');
+            $criteria = new Criteria();
+            $criteria->addFilter(new EqualsFilter('customFields.ivyReference', $referenceId));
+            $order = $this->orderRepository->search($criteria, $context)->first();
+        }
+        if ($order instanceof OrderEntity) {
+            $this->logger->info('order found ' . $order->getOrderNumber());
+        }
+        return $order;
     }
 
     /**
@@ -457,8 +468,8 @@ class ExpressService
             $request->setMethod('POST');
             $request->headers->set(PlatformRequest::HEADER_CONTEXT_TOKEN, $contextToken);
 
-            $data = new RequestDataBag($userData);
-            return $this->registerRoute->register($data, $salesChannelContext);
+            $dataBag = new RequestDataBag($userData);
+            return $this->registerRoute->register($dataBag, $salesChannelContext);
         }
         throw new IvyException('can not create user from request');
     }
@@ -466,22 +477,35 @@ class ExpressService
 
     /**
      * @param RequestDataBag $data
-     * @param string $contextToken
+     * @param array $payload
      * @param SalesChannelContext $salesChannelContext
      * @return array
      * @throws IvyException
      */
     public function checkoutConfirm(
         RequestDataBag $data,
-        string $contextToken,
+        array $payload,
         SalesChannelContext $salesChannelContext
     ): array
     {
+        $contextToken = $payload['metadata'][PlatformRequest::HEADER_CONTEXT_TOKEN];
+        $this->logger->info('create order ' . PlatformRequest::HEADER_CONTEXT_TOKEN . ' ' . $contextToken);
+        $salesChannelContext = $this->reloadContext($salesChannelContext, $contextToken);
+        $this->validateConfirmPayload($payload, $contextToken, $salesChannelContext);
+        $data->set('ivyStatus', $payload['status']);
+        $data->set('referenceId', $payload['referenceId']);
+
         $cart = $this->cartService->getCart($salesChannelContext->getToken(), $salesChannelContext);
         $order = $this->orderRoute->order($cart, $salesChannelContext, $data)->getOrder();
-
         $orderId = $order->getId();
 
+        $this->orderRepository->update([[
+            'id' => $orderId,
+            'customFields' => [
+                'ivyStatus' => $data->get('ivyStatus'),
+                'ivyReference' => $data->get('referenceId')
+            ]
+        ]], $salesChannelContext->getContext());
         if (!$orderId) {
             throw new IvyException('order can not be created');
         }
@@ -507,42 +531,13 @@ class ExpressService
         $paymentToken = $this->getToken($redirectUrl);
         $this->logger->info('paymentToken: ' . $paymentToken);
 
+        $this->logger->info('created order: '. $order->getOrderNumber());
         $this->logger->info('update ivy order with new referenceId: ' . $order->getId());
 
         return [
             $order,
             $paymentToken
         ];
-    }
-
-     /**
-     * @param string $orderId
-     * @param SalesChannelContext $salesChannelContext
-     * @return OrderEntity
-     */
-    public function getExpressOrder(string $orderId, SalesChannelContext $salesChannelContext): OrderEntity
-    {
-        $criteria = (new Criteria([$orderId]))
-            ->addAssociation('lineItems.cover')
-            ->addAssociation('transactions.paymentMethod')
-            ->addAssociation('deliveries.shippingMethod')
-            ->addAssociation('billingAddress.salutation')
-            ->addAssociation('billingAddress.country')
-            ->addAssociation('billingAddress.countryState')
-            ->addAssociation('deliveries.shippingOrderAddress.salutation')
-            ->addAssociation('deliveries.shippingOrderAddress.country')
-            ->addAssociation('deliveries.shippingOrderAddress.countryState');
-
-        $criteria->getAssociation('transactions')->addSorting(new FieldSorting('createdAt'));
-
-        /** @var OrderEntity|null $order */
-        $order = $this->orderRepository->search($criteria, $salesChannelContext->getContext())->first();
-
-        if (!$order) {
-            throw new OrderNotFoundException($orderId);
-        }
-
-        return $order;
     }
 
     /**
@@ -557,6 +552,8 @@ class ExpressService
         $request = new Request();
         $request->setMethod('GET');
         $request->headers->set(PlatformRequest::HEADER_CONTEXT_TOKEN, $contextToken);
+
+        //see https://shopware.stoplight.io/docs/store-api/882a9b9e86b10-fetch-or-create-a-cart
         /** @var JsonResponse $response */
         $response = $this->salesChannelProxyController->proxy('checkout/cart',
             $salesChannelContext->getSalesChannelId(),
@@ -564,6 +561,11 @@ class ExpressService
             $salesChannelContext->getContext()
         );
         $cartData = json_decode((string)$response->getContent(), true);
+
+        $cartErrors = $cartData['errors'];
+        if (!empty($cartErrors)) {
+            throw new IvyException(\print_r($cartErrors, true));
+        }
 
         $cartPrice = $cartData['price'];
 
@@ -761,5 +763,4 @@ class ExpressService
 
         return $params['_sw_payment_token'] ?? null;
     }
-
 }

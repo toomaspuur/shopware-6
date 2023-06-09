@@ -18,7 +18,7 @@ use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Shipping\ShippingMethodEntity;
 use Shopware\Core\Content\Product\Aggregate\ProductMedia\ProductMediaEntity;
 use Shopware\Core\Framework\Context;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
@@ -32,18 +32,18 @@ use WizmoGmbh\IvyPayment\IvyApi\shippingMethod;
 
 class createIvyOrderData
 {
-    private EntityRepositoryInterface $shippingRepository;
+    private EntityRepository $shippingRepository;
 
-    private EntityRepositoryInterface $mediaRepository;
+    private EntityRepository $mediaRepository;
 
     private Context $context;
 
-    private EntityRepositoryInterface $salesChannelRepo;
+    private EntityRepository $salesChannelRepo;
 
     public function __construct(
-        EntityRepositoryInterface $media,
-        EntityRepositoryInterface $shipping,
-        EntityRepositoryInterface $salesChannelRepo
+        EntityRepository $media,
+        EntityRepository $shipping,
+        EntityRepository $salesChannelRepo
     ) {
         $this->context = Context::createDefaultContext();
         $this->shippingRepository = $shipping;
