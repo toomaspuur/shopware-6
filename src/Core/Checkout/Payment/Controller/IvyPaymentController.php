@@ -148,6 +148,27 @@ class IvyPaymentController extends StorefrontController
         $this->logger->info('status for createOrder ' . \var_export($statusForCreateOrder, true));
 
         $referenceId = $payload['referenceId'];
+        $lockName = 'ivylock_' . $referenceId . '.lock';
+        $tmpdir = \sys_get_temp_dir();
+        $fp = \fopen($tmpdir . $lockName, 'wb');
+
+        $count = 0;
+        $timeoutSecs = 10; //number of seconds of timeout
+        $gotLock = true;
+        while (!\flock($fp, LOCK_EX | LOCK_NB, $wouldblock)) {
+            if ($wouldblock && $count++ < $timeoutSecs) {
+                $this->logger->warning($lockName . ' locked by other process. wait for lock release.');
+                \sleep(1);
+            } else {
+                $gotLock = false;
+                break;
+            }
+        }
+
+        if ($gotLock === false) {
+            $this->logger->error('timeout: ' . $lockName . ' locked by other process');
+            return new JsonResponse(null, Response::HTTP_LOCKED);
+        }
 
         $toCreateOrder = $toUpdateOrder = false;
 
