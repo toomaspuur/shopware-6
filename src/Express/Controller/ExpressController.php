@@ -39,7 +39,6 @@ class ExpressController extends StorefrontController
     private array $errors = [];
 
     private IvyCheckoutSession $ivyCheckoutSession;
-
     private CartService $cartService;
     private ApiClient $ivyApiClient;
 
@@ -268,7 +267,25 @@ class ExpressController extends StorefrontController
                     throw new IvyException('empty payload');
                 }
 
-                $this->logger->info('confirm payload is valid');
+                $this->logger->info('confirm payload is valid, start create order');
+
+                $referenceId = $payload['referenceId'] ?? null;
+
+                // always prefer an existing order
+                $existingOrder = $this->expressService->getIvyOrderByReference($referenceId);
+                if ($existingOrder) {
+                    $this->logger->info('order existing');
+                    $response = new IvyJsonResponse([
+                        'redirectUrl' => $finishUrl,
+                        'referenceId' => $existingOrder->getId(),
+                        'displayId' => $existingOrder->getOrderNumber(),
+                        'metadata' => $payload['metadata'],
+                    ]);
+                    $signature = $this->expressService->sign(\stripslashes((string) $response->getContent()), $salesChannelContext);
+                    $response->headers->set('X-Ivy-Signature', $signature);
+                    return $response;
+                }
+
                 $isExpress = $payload['express'];
                 $this->logger->info('express: ' . \var_export($isExpress, true));
 
@@ -285,13 +302,6 @@ class ExpressController extends StorefrontController
                 }
 
                 $this->expressService->validateConfirmPayload($payload, $contextToken, $salesChannelContext);
-
-                if ($isExpress) {
-                    $payload['shopperEmail'] = $tempData['shopperEmail'] ?? '';
-                    $payload['shopperPhone'] = $tempData['shopperPhone'] ?? '';
-                    $this->logger->debug('shopperEmail: ' . $payload['shopperEmail']);
-                    $this->logger->debug('shopperPhone: ' . $payload['shopperPhone']);
-                }
 
                 $outputData = [
                     'redirectUrl' => $finishUrl,
@@ -363,16 +373,6 @@ class ExpressController extends StorefrontController
             }
 
             if ($swOrder instanceof OrderEntity) {
-                $this->logger->info('update order over api');
-                $ivyResponse = $this->ivyApiClient->sendApiRequest('order/update', $config, \json_encode([
-                    'id' => $ivyOrderId,
-                    'displayId' => $swOrder->getOrderNumber(),
-                    'referenceId' => $swOrder->getId(),
-                    'metadata' => [
-                        'shopwareOrderId' => $swOrder->getOrderNumber()
-                    ]
-                ]));
-                $this->logger->info('ivy response: ' . \print_r($ivyResponse, true));
                 return $this->redirectToRoute('frontend.checkout.finish.page',['orderId' => $swOrder->getId()]);
             }
             $this->logger->info('order is not created');
