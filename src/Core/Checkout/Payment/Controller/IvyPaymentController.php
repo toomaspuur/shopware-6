@@ -31,6 +31,7 @@ use WizmoGmbh\IvyPayment\Logger\IvyLogger;
 use WizmoGmbh\IvyPayment\Services\IvyPaymentService;
 use WizmoGmbh\IvyPayment\Express\Service\ExpressService;
 use WizmoGmbh\IvyPayment\Components\Config\ConfigHandler;
+use WizmoGmbh\IvyPayment\IvyApi\ApiClient;
 
 /**
  * @Route(defaults={"_routeScope"={"storefront"}})
@@ -46,19 +47,24 @@ class IvyPaymentController extends StorefrontController
     private ExpressService $expressService;
 
     private ConfigHandler $configHandler;
+
+    private ApiClient $ivyApiClient;
+
     /**
      * @param IvyPaymentService $paymentService
      * @param TokenFactoryInterfaceV2 $tokenFactoryInterfaceV2
      * @param IvyLogger $logger
      * @param ExpressService $expressService
      * @param ConfigHandler $configHandler
+     * @param ApiClient $ivyApiClient
      */
     public function __construct(
         IvyPaymentService $paymentService,
         TokenFactoryInterfaceV2 $tokenFactoryInterfaceV2,
         IvyLogger $logger,
         ExpressService $expressService,
-        ConfigHandler $configHandler
+        ConfigHandler $configHandler,
+        ApiClient $ivyApiClient
     ) {
         $this->paymentService = $paymentService;
         $this->configHandler = $configHandler;
@@ -66,6 +72,7 @@ class IvyPaymentController extends StorefrontController
         $this->logger = $logger;
         $this->logger->setName('WEBHOOK');
         $this->expressService = $expressService;
+        $this->ivyApiClient = $ivyApiClient;
     }
 
     /**
@@ -198,6 +205,7 @@ class IvyPaymentController extends StorefrontController
             [$order, $token] = $this->expressService->checkoutConfirm($inputData, $payload, $salesChannelContext);
 
             $config = $this->configHandler->getFullConfig($salesChannelContext);
+
             $this->logger->info('update order over ivy api');
             $ivyResponse = $this->ivyApiClient->sendApiRequest('order/update', $config, \json_encode([
                 'id' => $ivyOrderId,
@@ -209,6 +217,7 @@ class IvyPaymentController extends StorefrontController
                 ]
             ]));
             $this->logger->info('ivy response: ' . \print_r($ivyResponse, true));
+            
             $outputData = [
                 "success" => true
             ];
