@@ -48,17 +48,17 @@ class IvyPaymentController extends StorefrontController
     private ConfigHandler $configHandler;
     /**
      * @param IvyPaymentService $paymentService
-     * @param ConfigHandler $configHandler
      * @param TokenFactoryInterfaceV2 $tokenFactoryInterfaceV2
      * @param IvyLogger $logger
      * @param ExpressService $expressService
+     * @param ConfigHandler $configHandler
      */
     public function __construct(
         IvyPaymentService $paymentService,
-        ConfigHandler $configHandler,
         TokenFactoryInterfaceV2 $tokenFactoryInterfaceV2,
         IvyLogger $logger,
-        ExpressService $expressService
+        ExpressService $expressService,
+        ConfigHandler $configHandler
     ) {
         $this->paymentService = $paymentService;
         $this->configHandler = $configHandler;
