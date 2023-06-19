@@ -12,7 +12,7 @@ namespace WizmoGmbh\IvyPayment;
 
 use Doctrine\DBAL\Connection;
 use Shopware\Core\Framework\Context;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Plugin;
@@ -73,7 +73,7 @@ class WizmoGmbhIvyPayment extends Plugin
 
     private function addPaymentMethod(Context $context): void
     {
-        /** @var EntityRepositoryInterface $paymentRepository */
+        /** @var EntityRepository $paymentRepository */
         $paymentRepository = $this->container->get('payment_method.repository');
 
         /** @var PluginIdProvider $pluginIdProvider */
@@ -105,7 +105,7 @@ class WizmoGmbhIvyPayment extends Plugin
 
     private function setPaymentMethodIsActive(bool $active, Context $context): void
     {
-        /** @var EntityRepositoryInterface $paymentRepository */
+        /** @var EntityRepository $paymentRepository */
         $paymentRepository = $this->container->get('payment_method.repository');
 
         $paymentMethodId = $this->getPaymentMethodId();
@@ -125,7 +125,7 @@ class WizmoGmbhIvyPayment extends Plugin
 
     private function getPaymentMethodId(): ?string
     {
-        /** @var EntityRepositoryInterface $paymentRepository */
+        /** @var EntityRepository $paymentRepository */
         $paymentRepository = $this->container->get('payment_method.repository');
 
         // Fetch ID for update

@@ -6,7 +6,7 @@ use Doctrine\DBAL\Exception;
 use Shopware\Core\Checkout\Cart\Cart;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\Context;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Plugin\PluginEntity;
@@ -37,7 +37,7 @@ class IvyCheckoutSession
     private RouterInterface $router;
 
     public function __construct(
-        EntityRepositoryInterface $pluginRepository,
+        EntityRepository $pluginRepository,
         ConfigHandler $configHandler,
         createIvyOrderData $createIvyOrderData,
         ApiClient $ivyApiClient,
@@ -72,7 +72,7 @@ class IvyCheckoutSession
         if ($order) {
             $ivySessionData = $this->createIvyOrderData->getSessionCreateDataFromOrder($order, $config);
             $referenceId = $order->getId();
-        } else if ($cart) {
+        } elseif ($cart) {
             $ivySessionData = $this->createIvyOrderData->getIvySessionDataFromCart(
                 $cart,
                 $salesChannelContext,

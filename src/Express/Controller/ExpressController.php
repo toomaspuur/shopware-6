@@ -2,17 +2,15 @@
 
 namespace WizmoGmbh\IvyPayment\Express\Controller;
 
+use Doctrine\DBAL\Exception;
 use Shopware\Core\Checkout\Cart\Exception\InvalidCartException;
 use Shopware\Core\Checkout\Cart\SalesChannel\CartService;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\Framework\Validation\Exception\ConstraintViolationException;
 use Shopware\Core\PlatformRequest;
-use Shopware\Core\Profiling\Profiler;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Storefront\Controller\StorefrontController;
-use Shopware\Storefront\Page\Checkout\Finish\CheckoutFinishPage;
-use Shopware\Storefront\Page\Checkout\Finish\CheckoutFinishPageLoadedHook;
 use Shopware\Storefront\Page\GenericPageLoaderInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,12 +21,11 @@ use WizmoGmbh\IvyPayment\Components\IvyJsonResponse;
 use WizmoGmbh\IvyPayment\Core\IvyPayment\IvyCheckoutSession;
 use WizmoGmbh\IvyPayment\Exception\IvyException;
 use WizmoGmbh\IvyPayment\Express\Service\ExpressService;
+use WizmoGmbh\IvyPayment\IvyApi\ApiClient;
 use WizmoGmbh\IvyPayment\Logger\IvyLogger;
-use Shopware\Core\Framework\Routing\Annotation\RouteScope;
 
 /**
  * @Route(defaults={"_routeScope"={"storefront"}})
- * @RouteScope(scopes={"storefront"})
  */
 class ExpressController extends StorefrontController
 {
@@ -39,36 +36,36 @@ class ExpressController extends StorefrontController
 
     private ConfigHandler $configHandler;
 
-    private GenericPageLoaderInterface $genericLoader;
-
     private array $errors = [];
 
     private IvyCheckoutSession $ivyCheckoutSession;
-
     private CartService $cartService;
+    private ApiClient $ivyApiClient;
 
     /**
      * @param ExpressService $expressService
      * @param ConfigHandler $configHandler
      * @param GenericPageLoaderInterface $genericLoader
      * @param IvyLogger $logger
+     * @param IvyCheckoutSession $ivyCheckoutSession
+     * @param CartService $cartService
      */
     public function __construct
     (
         ExpressService $expressService,
         ConfigHandler $configHandler,
-        GenericPageLoaderInterface $genericLoader,
         IvyLogger $logger,
         IvyCheckoutSession $ivyCheckoutSession,
-        CartService $cartService
+        CartService $cartService,
+        ApiClient $ivyApiClient
     )
     {
         $this->expressService = $expressService;
         $this->configHandler = $configHandler;
         $this->logger = $logger;
-        $this->genericLoader = $genericLoader;
         $this->ivyCheckoutSession = $ivyCheckoutSession;
         $this->cartService = $cartService;
+        $this->ivyApiClient = $ivyApiClient;
     }
 
     /**
@@ -89,6 +86,7 @@ class ExpressController extends StorefrontController
 
     public function _checkoutStart(string $contextToken, SalesChannelContext $salesChannelContext, bool $express): IvyJsonResponse
     {
+        $this->logger->setName('START');
         $this->logger->setLevel($this->configHandler->getLogLevel($salesChannelContext));
         $this->logger->info('-- create session -- express: ' . $express);
         $salesChannelContext = $this->expressService->switchPaymentMethod($salesChannelContext);
@@ -118,9 +116,11 @@ class ExpressController extends StorefrontController
      *          "csrf_protected"=false,
      *          "auth_required"=false,
      *     })
+     * @throws Exception
      */
     public function callback(Request $request, RequestDataBag $inputData, SalesChannelContext $salesChannelContext): Response
     {
+        $this->logger->setName('QOUTE');
         $this->logger->setLevel($this->configHandler->getLogLevel($salesChannelContext));
 
         $this->logger->info('received ivy callback: ' . print_r($inputData->all(), true));
@@ -133,9 +133,6 @@ class ExpressController extends StorefrontController
         try {
             if ($isValid === true) {
                 $payload = $data = $inputData->all();
-                $referenceId = $request->get('reference');
-                $this->logger->info('callback reference: ' . $referenceId);
-
                 $shipping = $data['shipping'] ?? null;
                 try {
                     $contextToken = $payload['metadata'][PlatformRequest::HEADER_CONTEXT_TOKEN];
@@ -249,9 +246,11 @@ class ExpressController extends StorefrontController
      *          "csrf_protected"=false,
      *          "auth_required"=false,
      *     })
+     * @throws Exception
      */
     public function confirmAction(Request $request, RequestDataBag $inputData, SalesChannelContext $salesChannelContext): Response
     {
+        $this->logger->setName('CONFIRM');
         $errorStatus = null;
         $outputData = [];
         $finishUrl = $this->expressService->getFinishUri();
@@ -272,13 +271,13 @@ class ExpressController extends StorefrontController
 
                 $referenceId = $payload['referenceId'] ?? null;
 
-                //always prefer an existing order
+                // always prefer an existing order
                 $existingOrder = $this->expressService->getIvyOrderByReference($referenceId);
                 if ($existingOrder) {
                     $this->logger->info('order existing');
                     $response = new IvyJsonResponse([
                         'redirectUrl' => $finishUrl,
-                        'referenceId' => $referenceId,
+                        'referenceId' => $existingOrder->getId(),
                         'displayId' => $existingOrder->getOrderNumber(),
                         'metadata' => $payload['metadata'],
                     ]);
@@ -299,31 +298,13 @@ class ExpressController extends StorefrontController
                     $contextToken = $this->expressService->setShippingMethod($payload, $contextToken, $salesChannelContext);
                     $this->expressService->updateUser($payload, $contextToken, $salesChannelContext);
                     $salesChannelContext = $this->expressService->reloadContext($salesChannelContext, $contextToken);
+                    $outputData['metadata'][PlatformRequest::HEADER_CONTEXT_TOKEN] = $contextToken;
                 }
 
                 $this->expressService->validateConfirmPayload($payload, $contextToken, $salesChannelContext);
 
-                if ($isExpress) {
-                    $payload['shopperEmail'] = $tempData['shopperEmail'] ?? '';
-                    $payload['shopperPhone'] = $tempData['shopperPhone'] ?? '';
-                    $this->logger->debug('shopperEmail: ' . $payload['shopperEmail']);
-                    $this->logger->debug('shopperPhone: ' . $payload['shopperPhone']);
-                }
-
-                /** @var OrderEntity $order */
-                [ $order, $token ] = $this->expressService->checkoutConfirm(
-                    $inputData,
-                    $contextToken,
-                    $salesChannelContext
-                );
-
                 $outputData = [
                     'redirectUrl' => $finishUrl,
-                    'displayId' => $order->getOrderNumber(),
-                    'referenceId' => $order->getId(),
-                    'metadata' => [
-                        '_sw_payment_token' => $token,
-                    ]
                 ];
             } catch (\Throwable $e) {
                 $errorStatus = $this->handleException($e);
@@ -351,58 +332,55 @@ class ExpressController extends StorefrontController
     /**
      * @Route("/ivyexpress/finish", name="frontend.ivyexpress.finish", methods={"GET"})
      */
-    public function finishAction(Request $request, RequestDataBag $inputData, SalesChannelContext $salesChannelContext)
+    public function finishAction(Request $request, RequestDataBag $inputData, SalesChannelContext $salesChannelContext): Response
     {
+        $this->logger->setLevel($this->configHandler->getLogLevel($salesChannelContext));
+        $this->logger->setName('FINISH');
         try {
             $referenceId = $request->get('reference');
             $ivyOrderId = $request->get('order-id');
-            $this->logger->setLevel($this->configHandler->getLogLevel($salesChannelContext));
+
             $this->logger->debug('finish action reference: ' . $referenceId);
             $this->logger->debug('order-id ' . $ivyOrderId);
-
-            $existingOrder = $this->expressService->getIvyOrderByReference($referenceId);
-
-            $swOrder = $this->expressService->getExpressOrder($existingOrder->getId(), $salesChannelContext);
-
-            $page = $this->genericLoader->load($request, $salesChannelContext);
-            $page = CheckoutFinishPage::createFrom($page);
-            if ($page->getMetaInformation()) {
-                $page->getMetaInformation()->setRobots('noindex,follow');
+            $config = $this->configHandler->getFullConfig($salesChannelContext);
+            $payload = $this->ivyApiClient->sendApiRequest('order/details', $config, \json_encode(['id' => $ivyOrderId]));
+            $this->logger->info('ivyOrderData: ' . \print_r($payload, true));
+            $contextToken = $payload['metadata'][PlatformRequest::HEADER_CONTEXT_TOKEN];
+            if (!empty($contextToken)) {
+                $this->logger->info('switch storefront context to order context');
+                $session = $request->getSession();
+                $session->migrate(false);
+                $session->set('sessionId', $session->getId());
+                $session->set(PlatformRequest::HEADER_CONTEXT_TOKEN, $contextToken);
+                $request->headers->set(PlatformRequest::HEADER_CONTEXT_TOKEN, $contextToken);
+            }
+            $swOrder = $this->expressService->getIvyOrderByReference($referenceId);
+            if ($swOrder === null) {
+                //order is not yet created
+                $this->logger->info('order by reference not found');
+                $status = $payload['status'] ?? null;
+                switch ($status) {
+                    case 'paid';
+                    case 'waiting_for_payment':
+                        [ $swOrder, $token ] = $this->expressService->checkoutConfirm($inputData, $payload, $salesChannelContext);
+                        break;
+                    case 'canceled':
+                    case 'failed':
+                        $this->logger->error('payment failed or canceled');
+                        $this->addFlash(self::DANGER, $this->trans('ivypaymentplugin.express.checkout.error'));
+                        break;
+                }
             }
 
-            if (\class_exists(Profiler::class)) {
-                Profiler::trace(
-                    'finish-page-order-loading',
-                    static function () use ($page, $swOrder): void {
-                        $page->setOrder($swOrder);
-                    }
-                );
-            } else {
-                $page->setOrder($swOrder);
+            if ($swOrder instanceof OrderEntity) {
+                return $this->redirectToRoute('frontend.checkout.finish.page',['orderId' => $swOrder->getId()]);
             }
-
-            $page->setChangedPayment(false);
-            $page->setPaymentFailed(false);
-
-            if ($page->getOrder()->getItemRounding()) {
-                $salesChannelContext->setItemRounding($page->getOrder()->getItemRounding());
-                $salesChannelContext->getContext()->setRounding($page->getOrder()->getItemRounding());
-            }
-            if ($page->getOrder()->getTotalRounding()) {
-                $salesChannelContext->setTotalRounding($page->getOrder()->getTotalRounding());
-            }
-            if (\method_exists($this, 'hook')) {
-                $this->hook(new CheckoutFinishPageLoadedHook($page, $salesChannelContext));
-            }
-            return $this->renderStorefront(
-                '@Storefront/storefront/page/checkout/finish/index.html.twig',
-                ['page' => $page]
-            );
+            $this->logger->info('order is not created');
         } catch (\Throwable $e) {
             $this->logger->error($e->getMessage());
             $this->addFlash(self::DANGER, $this->trans('ivypaymentplugin.express.checkout.error'));
-            return $this->redirectToRoute('frontend.checkout.finish.page');
         }
+        return $this->redirectToRoute('frontend.checkout.cart.page');
     }
 
     /**
@@ -422,7 +400,7 @@ class ExpressController extends StorefrontController
             }
         } elseif ($e instanceof InvalidCartException) {
             $errorStatus = Response::HTTP_BAD_REQUEST;
-            $this->logger->error('can not create create order, cart is invalid');
+            $this->logger->error('can not create order, cart is invalid');
             foreach ($e->getErrors() as $error) {
                 $this->logger->error(\print_r($error, true));
             }
