@@ -13,10 +13,10 @@
             <argument type="service" id="hcou.ivypayment.logger.payment_logger"/>
             <argument type="service" id="wizmo_gmbh.ivy_payment.express.service.express_service"/>
             <argument type="service" id="WizmoGmbh\IvyPayment\Components\Config\ConfigHandler"/>
-            <argument type="service" id="WizmoGmbh\IvyPayment\IvyApi\ApiClient"/>
             <call method="setContainer">
                 <argument type="service" id="service_container"/>
             </call>
+            <argument type="service" id="wizmo_gmbh.ivy_payment.ivy_api.api_client"/>
         </service>
 
         <service id="WizmoGmbh\IvyPayment\Express\Controller\ExpressController" public="true">
