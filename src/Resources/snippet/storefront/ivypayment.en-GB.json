@@ -5,7 +5,7 @@
         },
         "checkout": {
             "title": "Pay by bank",
-            "paymentMethodText": "Ivy - Plant trees at no extra cost"
+            "paymentMethodText": "Instant Bank Payment"
         }
     }
 }
