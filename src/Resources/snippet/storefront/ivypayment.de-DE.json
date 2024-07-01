@@ -5,7 +5,7 @@
         },
         "checkout": {
             "title": "Bezahle mit deiner Bank",
-            "paymentMethodText": "Ivy - Kostenlos Bäume pflanzen"
+            "paymentMethodText": "Banküberweisung"
         },
         "express": {
             "session": {
@@ -17,5 +17,3 @@
         }
     }
 }
-
-
