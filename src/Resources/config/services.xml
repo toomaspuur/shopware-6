@@ -19,8 +19,6 @@
         </service>
 
         <service id="WizmoGmbh\IvyPayment\Services\IvyPaymentService">
-            <argument type="service" id="Shopware\Core\Checkout\Payment\Cart\PaymentTransactionChainProcessor"/>
-            <argument type="service" id="Shopware\Core\Checkout\Payment\Cart\Token\JWTFactoryV2"/>
             <argument type="service" id="payment_method.repository"/>
             <argument type="service" id="Shopware\Core\Checkout\Payment\Cart\PaymentHandler\PaymentHandlerRegistry"/>
             <argument type="service" id="order_transaction.repository"/>
@@ -36,19 +34,19 @@
             <argument type="service" id="order.repository"/>
             <argument type="service" id="plugin.repository"/>
             <argument type="service" id="Shopware\Core\Checkout\Cart\SalesChannel\CartService"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\SalesChannel\CartOrderRoute"/>
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
             <argument type="service" id="WizmoGmbh\IvyPayment\Components\Config\ConfigHandler"/>
             <argument type="service" id="router"/>
             <argument type="service" id="WizmoGmbh\IvyPayment\Core\IvyPayment\createIvyOrderData"/>
-            <argument type="service" id="wizmogmbh_ivypayment.repository"/>
             <argument type="service" id="sales_channel.country.repository"/>
-            <argument type="service" id="wizmo_gmbh.ivy_payment.ivy_api.api_client"/>
             <argument type="service" id="Shopware\Core\System\SalesChannel\SalesChannel\SalesChannelContextSwitcher"/>
             <argument type="service" id="Shopware\Core\System\SalesChannel\Context\SalesChannelContextService"/>
             <argument type="service" id="Shopware\Core\Checkout\Promotion\Cart\PromotionItemBuilder"/>
             <argument type="service" id="Shopware\Core\Checkout\Shipping\SalesChannel\ShippingMethodRoute"/>
             <argument type="service" id="Shopware\Core\Framework\Api\Controller\SalesChannelProxyController"/>
             <argument type="service" id="hcou.ivypayment.logger.payment_logger"/>
+            <argument type="service" id="Shopware\Core\Checkout\Customer\SalesChannel\RegisterRoute"/>
         </service>
 
         <service class="WizmoGmbh\IvyPayment\IvyApi\ApiClient" id="wizmo_gmbh.ivy_payment.ivy_api.api_client">

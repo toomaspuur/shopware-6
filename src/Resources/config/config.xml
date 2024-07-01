@@ -104,5 +104,45 @@
         </component>
     </card>
 
-</config>
+    <card>
+        <title>Theme</title>
+        <title lang="de-DE">Theme</title>
 
+        <input-field type="bool">
+            <name>darkThemeDetail</name>
+            <label>Dark theme on the product detail page</label>
+            <label lang="de-DE">Dunkles Theme auf der Produktdetailseite</label>
+            <defaultValue>false</defaultValue>
+        </input-field>
+
+        <input-field type="bool">
+            <name>darkThemeOffCanva</name>
+            <label>Dark theme in mini shopping cart</label>
+            <label lang="de-DE">Dunkles Theme im Miniwarenkorb</label>
+            <defaultValue>false</defaultValue>
+        </input-field>
+
+        <input-field type="bool">
+            <name>darkThemeCart</name>
+            <label>Dark theme in shopping cart</label>
+            <label lang="de-DE">Dunkles Theme im Warenkorb</label>
+            <defaultValue>false</defaultValue>
+        </input-field>
+
+        <input-field type="bool">
+            <name>darkThemeRegister</name>
+            <label>Dark theme on the registration page</label>
+            <label lang="de-DE">Dunkles Theme auf der Registrierungsseite</label>
+            <defaultValue>false</defaultValue>
+        </input-field>
+
+        <input-field type="bool">
+            <name>showDetailBtn</name>
+            <label>Show button on product detail page</label>
+            <label lang="de-DE">Button auf Produktdetailseite einblenden</label>
+            <defaultValue>true</defaultValue>
+        </input-field>
+
+    </card>
+
+</config>

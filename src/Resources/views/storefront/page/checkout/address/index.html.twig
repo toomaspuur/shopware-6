@@ -12,6 +12,7 @@
                     data-shop-category="{{ page.IvyMcc}}"
                     data-locale="{{ 'ivypaymentplugin.ivy-modal.ivyLocale'|trans|sw_sanitize }}"
                     data-currency-code="{{ context.currency.isoCode }}"
+                    data-theme = "{% if config('WizmoGmbhIvyPayment.config.darkThemeRegister') %}dark{% else %}light{% endif %}"
                 ></button>
                 <template data-src="{{ page.IvyButtonUrl }}"></template>
             </div>

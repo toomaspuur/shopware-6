@@ -4,6 +4,7 @@
 
 .ivy--express-checkout-btn {
     margin-top: 0;
+    width: 100%;
     #ivy-checkout-button,.ivy-checkout-button {
         max-width: 100%;
         width: 100%;
@@ -23,5 +24,15 @@
 .buy-widget-container {
     .custom-select {
         height: unset;
+    }
+}
+
+.payment-method-description.ivy-payment {
+    width: 100%;
+    .ivy-pay-text {
+        font-weight: bold;
+    }
+    .ivy-pay-logo {
+        float: right;
     }
 }

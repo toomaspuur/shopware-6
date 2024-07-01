@@ -12,7 +12,7 @@ namespace WizmoGmbh\IvyPayment;
 
 use Doctrine\DBAL\Connection;
 use Shopware\Core\Framework\Context;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Plugin;
@@ -22,7 +22,6 @@ use Shopware\Core\Framework\Plugin\Context\InstallContext;
 use Shopware\Core\Framework\Plugin\Context\UninstallContext;
 use Shopware\Core\Framework\Plugin\Context\UpdateContext;
 use Shopware\Core\Framework\Plugin\Util\PluginIdProvider;
-use Shopware\Core\Framework\Uuid\Uuid;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use WizmoGmbh\IvyPayment\PaymentHandler\IvyPaymentHandler;
 use WizmoGmbh\IvyPayment\Setup\DataHolder\Tables;
@@ -30,11 +29,6 @@ use WizmoGmbh\IvyPayment\Setup\Uninstaller;
 
 class WizmoGmbhIvyPayment extends Plugin
 {
-    public function build(ContainerBuilder $container): void
-    {
-        parent::build($container);
-    }
-
     public function install(InstallContext $context): void
     {
         $this->addPaymentMethod($context->getContext());
@@ -50,11 +44,6 @@ class WizmoGmbhIvyPayment extends Plugin
     {
         $this->setPaymentMethodIsActive(false, $context->getContext());
         parent::deactivate($context);
-    }
-
-    public function update(UpdateContext $context): void
-    {
-        parent::update($context);
     }
 
     public function uninstall(UninstallContext $context): void
@@ -84,7 +73,7 @@ class WizmoGmbhIvyPayment extends Plugin
 
     private function addPaymentMethod(Context $context): void
     {
-        /** @var EntityRepositoryInterface $paymentRepository */
+        /** @var EntityRepository $paymentRepository */
         $paymentRepository = $this->container->get('payment_method.repository');
 
         /** @var PluginIdProvider $pluginIdProvider */
@@ -107,7 +96,7 @@ class WizmoGmbhIvyPayment extends Plugin
             // payment handler will be selected by the identifier
             'handlerIdentifier' => IvyPaymentHandler::class,
             'name' => 'IvyPayment',
-            'description' => 'Ivy - Climate Neutral Shopping',
+            'description' => 'Ivy - Payments with Impact',
             'pluginId' => $pluginId,
         ];
 
@@ -116,7 +105,7 @@ class WizmoGmbhIvyPayment extends Plugin
 
     private function setPaymentMethodIsActive(bool $active, Context $context): void
     {
-        /** @var EntityRepositoryInterface $paymentRepository */
+        /** @var EntityRepository $paymentRepository */
         $paymentRepository = $this->container->get('payment_method.repository');
 
         $paymentMethodId = $this->getPaymentMethodId();
@@ -136,7 +125,7 @@ class WizmoGmbhIvyPayment extends Plugin
 
     private function getPaymentMethodId(): ?string
     {
-        /** @var EntityRepositoryInterface $paymentRepository */
+        /** @var EntityRepository $paymentRepository */
         $paymentRepository = $this->container->get('payment_method.repository');
 
         // Fetch ID for update

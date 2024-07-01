@@ -1,0 +1,31 @@
+name: build
+
+on:
+  push:
+    branches: [main]    
+    tags:
+      - "v*.*.*"
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    #- name: Build extension
+    #  run: shopware-cli extension build .
+    - name: Zip extension
+      run: docker run --rm -v $(pwd):$(pwd) -w $(pwd) ghcr.io/friendsofshopware/shopware-cli:0.1.45 extension zip .
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: sw6-plugin      
+        path: WizmoGmbhIvyPayment*.zip
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: WizmoGmbhIvyPayment*.zip     

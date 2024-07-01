@@ -18,6 +18,15 @@ class IvyLogger extends Logger
     }
 
     /**
+     * @param string $name
+     * @return void
+     */
+    public function setName(string $name): void
+    {
+        $this->name = $name;
+    }
+
+    /**
      * @param $level
      * @param $message
      * @param array $context

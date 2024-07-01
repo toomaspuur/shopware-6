@@ -13,8 +13,7 @@
             {% if payment.id is same as(selectedPaymentMethodId) %}
                 <template data-src="{{ page.IvyButtonUrl }}"></template>
             {% endif %}
-            <span class="ivy-pay-logo">
-                <img src="/bundles/wizmogmbhivypayment/static/img/ivyLogoSmall.png" alt="IVY" title="IVY" class="ivy-s ivy-green"></span>
+            <span style="clear:both;"></span>
 
             {% if payment.translated.description %}
                 {% set paymentDescription = payment.translated.description|raw %}

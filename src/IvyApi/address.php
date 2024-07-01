@@ -21,6 +21,10 @@ class address
 
     private string $country;
 
+    private ?string $firstName = null;
+
+    private ?string $lastName = null;
+
     public function setLine1(string $line1): address
     {
         $this->line1 = $line1;
@@ -80,4 +84,43 @@ class address
     {
         return $this->line2;
     }
+
+    /**
+     * @return string|null
+     */
+    public function getFirstName(): ?string
+    {
+        return $this->firstName;
+    }
+
+    /**
+     * @param string|null $firstName
+     * @return $this
+     */
+    public function setFirstName(?string $firstName): address
+    {
+        $this->firstName = $firstName;
+
+        return $this;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getLastName(): ?string
+    {
+        return $this->lastName;
+    }
+
+    /**
+     * @param string|null $lastName
+     * @return $this
+     */
+    public function setLastName(?string $lastName): address
+    {
+        $this->lastName = $lastName;
+
+        return $this;
+    }
+
 }

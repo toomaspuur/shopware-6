@@ -118,8 +118,8 @@ class ConfigSubscriber implements EventSubscriberInterface
     {
         $config = $this->configHandler->getFullConfigBySalesChannelId($salesChannelId, $isSandBox, true);
         $quoteCallbackUrl = $this->router->generate('frontend.ivyexpress.callback', [], Router::ABSOLUTE_URL);
-        $successCallbackUrl = $this->router->generate('ivypayment.finalize.transaction', [], Router::ABSOLUTE_URL);
-        $errorCallbackUrl = $this->router->generate('ivypayment.failed.transaction', [], Router::ABSOLUTE_URL);
+        $successCallbackUrl = $this->router->generate('frontend.ivypayment.finalize.transaction', [], Router::ABSOLUTE_URL);
+        $errorCallbackUrl = $this->router->generate('frontend.ivypayment.failed.transaction', [], Router::ABSOLUTE_URL);
         $webhookUrl = $this->router->generate('ivypayment.update.transaction', [], Router::ABSOLUTE_URL);
         $privacyUrl = $this->router->generate('frontend.cms.page', ['id' => $config['privacyPage']], Router::ABSOLUTE_URL);
         $tosUrl = $this->router->generate('frontend.cms.page', ['id' => $config['tosPage']], Router::ABSOLUTE_URL);

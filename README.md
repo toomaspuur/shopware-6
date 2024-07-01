@@ -12,3 +12,4 @@ The GNU General Public License (GNU GPL). Please see [License File](LICENSE) for
 ## Installation
 
 For an installation instruction, please take a look at the plugin homepage.
+
